@@ -18,9 +18,10 @@ export default function Navbar() {
   const isRegistered = role !== ROLE.None;
   const dashboardHref = isRegistered ? `/${roleSlug(role)}` : null;
 
-  const navLinks = isRegistered
-    ? [{ href: dashboardHref, label: `${roleLabel(role)} Dashboard` }]
-    : [];
+  const navLinks = [
+    { href: "/workflow", label: "How It Works" },
+    ...(isRegistered ? [{ href: dashboardHref, label: `${roleLabel(role)} Dashboard` }] : []),
+  ];
 
   return (
     <header className="sticky top-0 z-40 glass border-b border-white/40">
