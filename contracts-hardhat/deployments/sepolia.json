@@ -1,0 +1,11 @@
+{
+  "network": "sepolia",
+  "IdentityRegistry": "0xF7A5fC08D77fD5Ae5afD4c58880158E799C8A8E6",
+  "AppointmentRegistry": "0x7DDf7c944959C9bc82EC09AD8312447c310dd3C4",
+  "MedicalRecordNFT": "0xa90deE70519A38Baa9BBc3fF8dEF2f8ec8baAAE2",
+  "MedicalRecordRegistry": "0xD9AdC87cA90F765Ec36604D75363369E6CA9f13b",
+  "AccessControlRegistry": "0x559D487AE5eEffDDB473b783E1Cec08BcD881Fee",
+  "ClaimRegistry": "0x2564F0Ede7A3220D1a6655dC5285166d492d277c",
+  "VisitRegistry": "0x34DBc6BBFb639c7CD870088A6912f74216Ed9EdA",
+  "ReferralRegistry": "0xC120D4522C2ccf09E9bB2D388f89DB234D9952e5"
+}

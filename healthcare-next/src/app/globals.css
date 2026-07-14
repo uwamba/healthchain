@@ -1,0 +1,177 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0a2540;
+
+  /* Healthcare Blue / Medical Green / Blockchain Purple — see docs/ARCHITECTURE.md
+     for the usage discipline: blue = product actions, green = verified/confirmed
+     ONLY, purple = on-chain/Web3-native affordances only. */
+  --color-brand: #0b5fff;
+  --color-brand-light: #3b82ff;
+  --color-brand-pale: #e8f0ff;
+  --color-medical-green: #00c896;
+  --color-medical-green-pale: #e3fbf4;
+  --color-blockchain-purple: #8b5cf6;
+  --color-blockchain-purple-pale: #f1ecfe;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand: var(--color-brand);
+  --color-brand-light: var(--color-brand-light);
+  --color-brand-pale: var(--color-brand-pale);
+  --color-medical-green: var(--color-medical-green);
+  --color-medical-green-pale: var(--color-medical-green-pale);
+  --color-blockchain-purple: var(--color-blockchain-purple);
+  --color-blockchain-purple-pale: var(--color-blockchain-purple-pale);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #061018;
+    --foreground: #e8f0ff;
+    --color-brand-pale: #0d2140;
+    --color-medical-green-pale: #06261f;
+    --color-blockchain-purple-pale: #241a3d;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  background-image:
+    radial-gradient(circle at 10% 0%, var(--color-brand-pale) 0%, transparent 40%),
+    radial-gradient(circle at 90% 10%, var(--color-blockchain-purple-pale) 0%, transparent 35%);
+  background-attachment: fixed;
+}
+
+/* Glassmorphism panel used across cards, nav, and modals — the
+   "banking-grade trust" surface treatment used throughout the app. */
+.glass {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px rgba(11, 95, 255, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass {
+    background: rgba(10, 20, 35, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Entrance animation for cards/sections — one-shot only, never looping. */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out both;
+}
+
+/* Slow pulse ring for "verified on-chain" badges — the only looping
+   animation allowed besides the pending-tx spinner. */
+@keyframes verified-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 200, 150, 0.45); }
+  50% { box-shadow: 0 0 0 10px rgba(0, 200, 150, 0); }
+}
+
+.animate-verified-pulse {
+  animation: verified-pulse 2.4s ease-out infinite;
+}
+
+/* ---- Landing page: hero ---- */
+
+/* Full-bleed hero band — a slow-drifting blue/purple gradient mesh instead
+   of a stock photo, so it reads as "network," not generic stock healthcare
+   imagery, and stays crisp/self-contained at any viewport size. */
+.hero-band {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--color-brand-pale) 0%, var(--background) 100%);
+}
+
+/* Ripple background (ref: dribbble.com/shots/9521395-Ripples-Animated-Backgrounds)
+   reinterpreted for this context: each ring is a "verified event" propagating
+   outward — fits the audit-trail/broadcast theme better than a static blob.
+   A handful of origins, each emitting concentric rings on staggered delays so
+   several are always visible mid-expansion at once, like real water ripples. */
+.ripple-origin {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+}
+
+.ripple-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5rem;
+  height: 5rem;
+  margin: -2.5rem 0 0 -2.5rem;
+  border-radius: 9999px;
+  border: 1.5px solid currentColor;
+  opacity: 0;
+  animation: ripple-expand 5s ease-out infinite;
+}
+
+@keyframes ripple-expand {
+  0% { transform: scale(0.3); opacity: 0.6; }
+  70% { opacity: 0.15; }
+  100% { transform: scale(4.5); opacity: 0; }
+}
+
+@media (prefers-color-scheme: dark) {
+  @keyframes ripple-expand {
+    0% { transform: scale(0.3); opacity: 0.4; }
+    70% { opacity: 0.1; }
+    100% { transform: scale(4.5); opacity: 0; }
+  }
+}
+
+/* ---- Landing page: flip cards (how-it-works steps) ---- */
+
+.flip-card {
+  perspective: 1200px;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+.flip-card:hover .flip-card-inner,
+.flip-card:focus-within .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front,
+.flip-card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-card-back {
+  transform: rotateY(180deg);
+}
+
+@media (prefers-color-scheme: dark) {
+  .section-alt-band {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+}
