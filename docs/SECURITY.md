@@ -5,11 +5,20 @@
 - **Identity integrity** — a role, once registered in `IdentityRegistry`,
   cannot be silently changed by anyone but the account itself, and every
   other contract reads that role live rather than trusting a cached copy.
-- **Consent integrity** — a doctor cannot read a patient's records through
-  this app without an on-chain `AccessControlRegistry` grant the patient
-  themselves approved, for a duration the patient themselves chose. The
-  approval, denial, and any early revocation are all immutable, timestamped,
-  on-chain facts.
+- **Consent integrity** — a doctor or pharmacy cannot read a patient's
+  records through this app without an on-chain `AccessControlRegistry`
+  grant the patient themselves approved, for a duration the patient
+  themselves chose. (`requestAccess` accepts either role — one grant
+  lifecycle, not two parallel access-control systems — see
+  `docs/ARCHITECTURE.md`.) The approval, denial, and any early revocation
+  are all immutable, timestamped, on-chain facts.
+- **Insurance claim visibility is patient-gated and time-boxed** — a claim
+  a provider submits is invisible to the insurer until the patient calls
+  `approvePatientVisibility()`, and that approval only opens a 30-day
+  window (`ClaimRegistry.VISIBILITY_PERIOD`) rather than permanent access.
+  A record can never be attached to more than one claim
+  (`recordClaimed`), so batching many dispensed prescriptions into one
+  monthly claim can't accidentally double-bill the same service.
 - **Non-repudiation of clinical actions** — every record creation,
   prescription dispense, and appointment booking/cancellation is an
   irreversible, indexed blockchain event. No administrator can quietly edit
@@ -43,6 +52,35 @@ timeline**, not an oversight: the assignment's "Fine-Grained RBAC" and "IPFS"
 requirements are about verifiable, on-chain-enforced access control and
 decentralized storage — both of which this app delivers — not about
 cryptographic confidentiality of the documents themselves.
+
+## The claim visibility window is the same trade-off, made explicit
+
+Once a claim's 30-day window lapses, this app's UI stops *showing* the
+insurer the description and attached record ids — but exactly as with
+`hasAccess()` above, `claims(claimId)` is a public `view` getter. Anyone
+querying the chain directly can still read every field, at any time,
+window or no window. What actually changes at expiry:
+
+1. **`loadClaimsForInsurer()` blanks the description/recordIds client-side**
+   once `hasFullVisibility()` returns false — a frontend policy gate, not
+   encryption, identical in kind to the record-access gate above.
+2. **The non-sensitive stub (id, provider/insurer address, amount, dates)
+   was never hidden in the first place** — it's exactly what
+   `ClaimSubmitted`'s event args already carry, which is why it stays
+   visible in the Hospital/Patient Activity Logs regardless of window
+   state; there's no separate "public ledger" contract because the event
+   log already *is* one.
+3. **Renewal is a fresh patient signature, not a technical unlock** — the
+   contract doesn't "know" the description any less after expiry than
+   before; `approveVisibilityRenewal()` just re-authorizes the frontend to
+   show it again, same consent model as the original approval.
+
+If a future iteration wanted the description itself to be unreadable after
+expiry (not just unshown), it would need the same Curve25519 envelope
+approach below, applied to the claim description rather than the record
+CID — genuinely revoking a decryption key isn't possible either, but
+re-wrapping to a rotating key per window is the closest on-chain-friendly
+analogue, and was out of scope here for the same timeline reasons.
 
 ## The stretch path that would close this gap
 
