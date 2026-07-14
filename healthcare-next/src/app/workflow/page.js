@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import {
   ArrowRight,
   Building2,
-  FileSignature,
   FlaskConical,
   HeartPulse,
   Pill,
@@ -13,76 +12,12 @@ import {
   ShieldQuestion,
   Stethoscope,
   UserCheck,
-  UserPlus,
 } from "lucide-react";
-import WorkflowStep from "@/components/WorkflowStep";
 import RoleCapabilityCard from "@/components/RoleCapabilityCard";
 import BrowserFrame from "@/components/mockups/BrowserFrame";
 import PhoneFrame from "@/components/mockups/PhoneFrame";
+import DesktopJourneyDemo from "@/components/mockups/DesktopJourneyDemo";
 import { DEMO_SCENES } from "@/components/mockups/DemoScenes";
-
-// The full, concrete patient journey — mirrors docs/WORKFLOWS.md, rendered
-// as a guided visual timeline instead of a markdown doc. Kept as page-level
-// data (not fetched) since this is documentation, not on-chain state.
-const JOURNEY_STEPS = [
-  {
-    icon: UserPlus,
-    title: "Create a digital health identity",
-    actor: "Everyone, once",
-    actions: ["register(role, name)"],
-    description:
-      "One on-chain registration per wallet — patient, doctor, hospital, laboratory, pharmacy, or insurer. This is the only account you ever need; your role is a verified on-chain fact, never a settings toggle.",
-  },
-  {
-    icon: Building2,
-    title: "Hospital check-in",
-    actor: "Hospital → Patient approves",
-    actions: ["requestVisit(patient)", "approveVisit(visitId)"],
-    description:
-      "The hospital starts a visit for a walked-in patient and shows a QR. The patient scans it with their own phone and taps Confirm — a real transaction their own wallet signs, not a front-desk override.",
-  },
-  {
-    icon: Stethoscope,
-    title: "Doctor requests access",
-    actor: "Doctor → Patient approves",
-    actions: ["requestAccess(patient)", "approveAccess(doctor, duration)"],
-    description:
-      "Being checked in never grants a doctor anything by itself. The doctor still has to request access, and the patient still has to approve it — for 24 hours, 7 days, or 30 days, revocable anytime.",
-  },
-  {
-    icon: FileSignature,
-    title: "Diagnosis & prescription",
-    actor: "Doctor",
-    actions: ["createRecord(patient, type, ipfsCid)"],
-    description:
-      "Once access is granted, the doctor's consultation notes and prescriptions are minted as a Medical Record NFT owned by the patient — it shows up on their Medical Assets grid immediately.",
-  },
-  {
-    icon: FlaskConical,
-    title: "Lab referral (if needed)",
-    actor: "Doctor → Patient approves twice",
-    actions: ["createReferral()", "approveReferral()", "completeReferral()", "approveReferralResult()"],
-    description:
-      "The doctor refers the patient to a lab; the patient approves sending the referral, the lab uploads the result, and the patient separately approves sharing that result back with the doctor.",
-  },
-  {
-    icon: Pill,
-    title: "Pharmacy",
-    actor: "Patient shows QR, or Pharmacy requests access",
-    actions: ["dispensePrescription(recordId)"],
-    description:
-      "Either the patient shows their prescription's QR for a quick one-off dispense, or the pharmacy looks the patient up, requests access (same request-and-approve pattern as a doctor), and dispenses from their approved patient list.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Insurance claim",
-    actor: "Provider files → Patient approves visibility",
-    actions: ["submitClaim()", "approvePatientVisibility()", "approveClaim()"],
-    description:
-      "The pharmacy or lab files a claim for services it rendered — invisible to the insurer until the patient approves it, and only visible for a 30-day window after that before the patient must renew it.",
-    last: true,
-  },
-];
 
 const ROLE_CARDS = [
   {
@@ -212,13 +147,12 @@ export default function WorkflowPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-3xl px-4 sm:px-6 py-4 sm:py-8">
-        <h2 className="text-xl sm:text-2xl font-semibold text-center mb-10">The Full Patient Journey</h2>
-        <div>
-          {JOURNEY_STEPS.map((step, i) => (
-            <WorkflowStep key={step.title} index={i} {...step} />
-          ))}
-        </div>
+      <section className="mx-auto max-w-4xl px-4 sm:px-6 py-4 sm:py-8">
+        <h2 className="text-xl sm:text-2xl font-semibold text-center mb-2">The Full Patient Journey</h2>
+        <p className="text-sm text-gray-500 text-center max-w-xl mx-auto mb-8">
+          A simulated walkthrough of the actual dashboards — auto-advancing, or click a dot to jump to any step.
+        </p>
+        <DesktopJourneyDemo />
       </section>
 
       <section className="mx-auto max-w-6xl px-4 sm:px-6 py-4 sm:py-8">
