@@ -17,6 +17,9 @@ import {
 } from "lucide-react";
 import WorkflowStep from "@/components/WorkflowStep";
 import RoleCapabilityCard from "@/components/RoleCapabilityCard";
+import BrowserFrame from "@/components/mockups/BrowserFrame";
+import PhoneFrame from "@/components/mockups/PhoneFrame";
+import { DEMO_SCENES } from "@/components/mockups/DemoScenes";
 
 // The full, concrete patient journey — mirrors docs/WORKFLOWS.md, rendered
 // as a guided visual timeline instead of a markdown doc. Kept as page-level
@@ -214,6 +217,39 @@ export default function WorkflowPage() {
         <div>
           {JOURNEY_STEPS.map((step, i) => (
             <WorkflowStep key={step.title} index={i} {...step} />
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-4 sm:py-8">
+        <h2 className="text-xl sm:text-2xl font-semibold text-center mb-2">See It In Action</h2>
+        <p className="text-sm text-gray-500 text-center max-w-xl mx-auto mb-10">
+          Illustrative recreations of the real screens, with example data — not live wallet connections.
+        </p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {DEMO_SCENES.map(({ key, frame, url, title, caption, Scene }, i) => (
+            <motion.div
+              key={key}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.5, ease: "easeOut", delay: i * 0.06 }}
+              className="space-y-3"
+            >
+              {frame === "phone" ? (
+                <PhoneFrame>
+                  <Scene />
+                </PhoneFrame>
+              ) : (
+                <BrowserFrame url={url}>
+                  <Scene />
+                </BrowserFrame>
+              )}
+              <div className="text-center px-2">
+                <p className="font-medium text-sm">{title}</p>
+                <p className="text-xs text-gray-500">{caption}</p>
+              </div>
+            </motion.div>
           ))}
         </div>
       </section>
