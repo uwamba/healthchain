@@ -103,6 +103,36 @@ export function WalletProvider({ children }) {
     }
   }, [router]);
 
+  // Silently restores account/signer on page load if this site is already
+  // authorized in MetaMask (eth_accounts never prompts, unlike
+  // eth_requestAccounts) — without this, every write after a plain refresh
+  // fell back to the read-only provider and failed with "sending a
+  // transaction requires a signer", even though the wallet was still
+  // connected as far as MetaMask itself was concerned.
+  useEffect(() => {
+    if (typeof window.ethereum === "undefined") return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const accounts = await window.ethereum.request({ method: "eth_accounts" });
+        if (cancelled || accounts.length === 0) return;
+
+        const currentChainId = await window.ethereum.request({ method: "eth_chainId" });
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        setAccount(accounts[0]);
+        setChainId(currentChainId);
+        setSigner(provider.getSigner());
+      } catch (error) {
+        console.error("Failed to restore existing wallet session:", error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     if (typeof window.ethereum === "undefined") return;
 
@@ -111,6 +141,7 @@ export function WalletProvider({ children }) {
         disconnect();
       } else {
         setAccount(accounts[0]);
+        setSigner(new ethers.providers.Web3Provider(window.ethereum).getSigner());
       }
     };
     const handleChainChanged = (newChainId) => setChainId(newChainId);

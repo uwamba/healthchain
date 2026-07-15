@@ -52,8 +52,8 @@ export default function BookAppointmentForm({ onBooked }) {
 
     try {
       await runTx(() => contracts.appointment.bookAppointment(trimmed, scheduledFor, reason), {
-        pendingLabel: "Booking appointment…",
-        successLabel: "Appointment booked",
+        pendingLabel: "Requesting appointment…",
+        successLabel: "Appointment requested — waiting for the doctor to confirm",
       });
       setDoctorAddress("");
       setDateTime("");

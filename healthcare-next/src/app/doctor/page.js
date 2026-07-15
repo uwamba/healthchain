@@ -5,7 +5,7 @@ import { CalendarClock } from "lucide-react";
 import RoleGuard from "@/components/RoleGuard";
 import { useWallet } from "@/context/WalletContext";
 import { useContractTx } from "@/hooks/useContractTx";
-import { loadAllAppointments } from "@/lib/appointmentRegistry";
+import { loadAllAppointments, appointmentStatusLabel } from "@/lib/appointmentRegistry";
 import { loadPatientRecords, RECORD_TYPES } from "@/lib/medicalRecordRegistry";
 import { loadVisitsAssignedToDoctor } from "@/lib/visitRegistry";
 import { loadApprovedPatientsForDoctor } from "@/lib/accessControlRegistry";
@@ -26,6 +26,8 @@ function DoctorDashboard() {
   const { account, contracts } = useWallet();
   const { runTx } = useContractTx();
   const [appointments, setAppointments] = useState(null);
+  const [pendingAppointments, setPendingAppointments] = useState(null);
+  const [respondingId, setRespondingId] = useState(null);
   const [allMyAppointments, setAllMyAppointments] = useState([]);
   const [patientNames, setPatientNames] = useState({});
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -62,8 +64,14 @@ function DoctorDashboard() {
     setPatientNames(nameMap);
 
     const now = Math.floor(Date.now() / 1000);
+    const pending = mine
+      .filter((a) => a.status === 0 && a.scheduledFor >= now) // Requested
+      .sort((a, b) => a.scheduledFor - b.scheduledFor)
+      .map((a) => ({ ...a, patientName: nameMap[a.patient] }));
+    setPendingAppointments(pending);
+
     const upcoming = mine
-      .filter((a) => a.status === 0 && a.scheduledFor >= now)
+      .filter((a) => a.status === 1 && a.scheduledFor >= now) // Confirmed
       .sort((a, b) => a.scheduledFor - b.scheduledFor)
       .map((a) => ({ ...a, patientName: nameMap[a.patient] }));
     setAppointments(upcoming);
@@ -78,6 +86,36 @@ function DoctorDashboard() {
       loadAppointments();
     } catch {
       // toast already shows the failure
+    }
+  }
+
+  async function confirmAppointment(id) {
+    setRespondingId(id);
+    try {
+      await runTx(() => contracts.appointment.confirmAppointment(id), {
+        pendingLabel: "Confirming appointment…",
+        successLabel: "Appointment confirmed",
+      });
+      loadAppointments();
+    } catch {
+      // toast already shows the failure
+    } finally {
+      setRespondingId(null);
+    }
+  }
+
+  async function declineAppointment(id) {
+    setRespondingId(id);
+    try {
+      await runTx(() => contracts.appointment.declineAppointment(id), {
+        pendingLabel: "Declining appointment…",
+        successLabel: "Appointment declined",
+      });
+      loadAppointments();
+    } catch {
+      // toast already shows the failure
+    } finally {
+      setRespondingId(null);
     }
   }
 
@@ -109,6 +147,48 @@ function DoctorDashboard() {
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 grid lg:grid-cols-[320px_1fr] gap-8">
       <aside className="space-y-6 min-w-0">
+        <div>
+          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <CalendarClock className="h-5 w-5 text-brand" />
+            Pending Appointment Requests
+          </h2>
+          {pendingAppointments === null ? (
+            <div className="glass rounded-2xl p-4">
+              <SkeletonRow />
+            </div>
+          ) : pendingAppointments.length === 0 ? (
+            <EmptyState title="No pending requests" description="Appointments patients book with you will wait here for your confirmation." />
+          ) : (
+            <div className="glass rounded-2xl divide-y divide-gray-100 p-1">
+              {pendingAppointments.map((a) => (
+                <div key={a.id} className="p-3 space-y-2">
+                  <div>
+                    <p className="font-medium text-sm">{a.patientName || "Patient"}</p>
+                    <p className="text-xs text-gray-500">{new Date(a.scheduledFor * 1000).toLocaleString()}</p>
+                    <p className="text-xs text-gray-400">{a.reason}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => declineAppointment(a.id)}
+                      disabled={respondingId === a.id}
+                      className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Decline
+                    </button>
+                    <button
+                      onClick={() => confirmAppointment(a.id)}
+                      disabled={respondingId === a.id}
+                      className="flex-1 rounded-lg bg-medical-green text-white px-3 py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-50"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div>
           <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
             <CalendarClock className="h-5 w-5 text-brand" />
@@ -178,7 +258,7 @@ function DoctorDashboard() {
         <div>
           <h2 className="text-lg font-semibold mb-3">Calendar</h2>
           <AppointmentCalendar
-            appointments={allMyAppointments}
+            appointments={allMyAppointments.filter((a) => a.status === 0 || a.status === 1)}
             renderDay={(dayAppointments) =>
               dayAppointments.length === 0 ? (
                 <p className="text-xs text-gray-400">No appointments this day.</p>
@@ -186,7 +266,10 @@ function DoctorDashboard() {
                 dayAppointments.map((a) => (
                   <div key={a.id} className="text-xs">
                     <p className="font-medium">{patientNames[a.patient] || "Patient"}</p>
-                    <p className="text-gray-500">{new Date(a.scheduledFor * 1000).toLocaleTimeString()} — {a.reason}</p>
+                    <p className="text-gray-500">
+                      {new Date(a.scheduledFor * 1000).toLocaleTimeString()} — {a.reason} (
+                      {appointmentStatusLabel(a.status)})
+                    </p>
                   </div>
                 ))
               )

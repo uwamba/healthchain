@@ -72,6 +72,7 @@ describe("MedicalRecordRegistry", function () {
 
     const record = await registry.records(0);
     expect(record.status).to.equal(RecordStatus.Dispensed);
+    expect(await registry.dispensedBy(0)).to.equal(pharmacy.address);
 
     await expect(registry.connect(pharmacy).dispensePrescription(0)).to.be.revertedWith("Not active");
   });

@@ -33,6 +33,11 @@ contract MedicalRecordRegistry {
     /// Patient dashboard can read a full record list in a single call.
     mapping(address => uint256[]) public recordsOfPatient;
 
+    /// @dev Set in dispensePrescription — lets ClaimRegistry recognize the
+    /// dispensing pharmacy as entitled to claim for a prescription it
+    /// dispensed but didn't issue (the issuer is the prescribing doctor).
+    mapping(uint256 => address) public dispensedBy;
+
     event RecordCreated(
         uint256 indexed id,
         address indexed patient,
@@ -101,6 +106,7 @@ contract MedicalRecordRegistry {
         require(record.status == RecordStatus.Active, "Not active");
 
         record.status = RecordStatus.Dispensed;
+        dispensedBy[recordId] = msg.sender;
         emit PrescriptionDispensed(recordId, msg.sender);
     }
 

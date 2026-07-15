@@ -169,7 +169,10 @@ does.
 ```
 Pharmacy (after dispense, or batched later — see below) / Laboratory
   "File Insurance Claim": insurer address + description + amount + one or
-  more recordIds this same provider issued
+  more recordIds this same provider either issued OR (Pharmacy only)
+  actually dispensed — a prescription's issuer is the prescribing doctor,
+  but it's the dispensing pharmacy that rendered the billable service and
+  can claim for it
     → ClaimRegistry.submitClaim(patient, insurer, [recordIds...], ...)
     → status: AwaitingPatientApproval (insurer can't see or act on it yet)
     → each attached recordId is marked claimed — it can never be attached
@@ -224,6 +227,28 @@ itself (only Doctor and Laboratory do, plus Pharmacy's dispense action), and
 a claim can only attach records the submitting provider actually issued. So
 hospital-initiated claims are supported on-chain but not yet reachable from
 the Hospital dashboard's UI — flagged here rather than silently left out.
+
+## 7. Appointments — separate from the in-person visit flow
+
+```
+Patient Dashboard — "Book Appointment"
+  Doctor address + date/time + reason → AppointmentRegistry.bookAppointment()
+    → reserves the slot immediately (no other patient can request the same
+      doctor at the same timestamp) but status starts at Requested
+    │
+    ▼
+Doctor's "Pending Appointment Requests" panel
+  Confirm → confirmAppointment() → status: Confirmed
+  Decline → declineAppointment() → status: Declined, slot freed for rebooking
+    │
+    ▼
+Either side can still cancelAppointment() while Requested or Confirmed,
+freeing the slot the same way a decline does
+```
+
+This is the same request→approve shape as everything else in this app —
+booking a slot doesn't settle anything by itself, the doctor's own
+confirmation does.
 
 ## Per-Role Capability Summary
 

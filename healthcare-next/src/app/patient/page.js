@@ -9,7 +9,7 @@ import {
   loadPendingRequestsForPatient,
   loadApprovedGrantsForPatient,
 } from "@/lib/accessControlRegistry";
-import { loadAllAppointments } from "@/lib/appointmentRegistry";
+import { loadAllAppointments, appointmentStatusLabel } from "@/lib/appointmentRegistry";
 import { loadVisitsForPatient } from "@/lib/visitRegistry";
 import { loadReferralsForPatient } from "@/lib/referralRegistry";
 import { loadClaimsForPatient, loadVisibilityRenewalRequestsForPatient } from "@/lib/claimRegistry";
@@ -83,7 +83,7 @@ function PatientDashboard() {
 
     const now = Math.floor(Date.now() / 1000);
     const upcoming = mine
-      .filter((a) => a.status === 0 && a.scheduledFor > now)
+      .filter((a) => (a.status === 0 || a.status === 1) && a.scheduledFor > now)
       .sort((a, b) => a.scheduledFor - b.scheduledFor)[0];
 
     const uniqueDoctors = [...new Set(mine.map((a) => a.doctor))];
@@ -126,7 +126,16 @@ function PatientDashboard() {
           </div>
           {nextAppointment ? (
             <div>
-              <p className="text-sm text-gray-500">Next Appointment</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-gray-500">Next Appointment</p>
+                <span
+                  className={`text-xs font-medium rounded-full px-2 py-0.5 ${
+                    nextAppointment.status === 1 ? "bg-medical-green-pale text-medical-green" : "bg-amber-50 text-amber-600"
+                  }`}
+                >
+                  {appointmentStatusLabel(nextAppointment.status)}
+                </span>
+              </div>
               <p className="font-medium">{nextAppointment.doctorName || "Doctor"}</p>
               <p className="text-sm text-gray-500">
                 {new Date(nextAppointment.scheduledFor * 1000).toLocaleString()}
@@ -172,7 +181,7 @@ function PatientDashboard() {
         <h2 className="text-lg font-semibold mb-4">Appointments</h2>
         <div className="grid sm:grid-cols-2 gap-6">
           <AppointmentCalendar
-            appointments={myAppointments}
+            appointments={myAppointments.filter((a) => a.status === 0 || a.status === 1)}
             renderDay={(dayAppointments) =>
               dayAppointments.length === 0 ? (
                 <p className="text-xs text-gray-400">No appointments this day.</p>
@@ -180,7 +189,10 @@ function PatientDashboard() {
                 dayAppointments.map((a) => (
                   <div key={a.id} className="text-xs">
                     <p className="font-medium">{doctorNames[a.doctor] || "Doctor"}</p>
-                    <p className="text-gray-500">{new Date(a.scheduledFor * 1000).toLocaleTimeString()} — {a.reason}</p>
+                    <p className="text-gray-500">
+                      {new Date(a.scheduledFor * 1000).toLocaleTimeString()} — {a.reason} (
+                      {appointmentStatusLabel(a.status)})
+                    </p>
                   </div>
                 ))
               )

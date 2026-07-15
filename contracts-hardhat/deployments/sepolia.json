@@ -1,11 +1,11 @@
 {
   "network": "sepolia",
   "IdentityRegistry": "0x2f5200D470b7D8746aA45E2c06d8b6a8Ab22A35c",
-  "AppointmentRegistry": "0x89e1c13376d221a5a47507035Eb22087D45fa574",
-  "MedicalRecordNFT": "0x8a0240B1B4D4313dA677D168F522124bF9A14370",
-  "MedicalRecordRegistry": "0x0c07c0A1F861fF4295501983703A01e8dC7f9beE",
+  "AppointmentRegistry": "0x968493815c398A6c37023FB73Ce7936D634AE2fb",
+  "MedicalRecordNFT": "0xA37d9f99D48750c6745b92F50CAfCb50e70304d8",
+  "MedicalRecordRegistry": "0x0F7A5Ad61d0ED4F9C97efF9AFB149970ccEACA06",
   "AccessControlRegistry": "0x58F998023543964603d54E3f83143A2fFB25e898",
-  "ClaimRegistry": "0xf0Aab97E65456CA5CE7c93a5F1A46E72f90412E7",
+  "ClaimRegistry": "0x1F821b5E2894D6fcD6404F820bd2C231E61966eb",
   "VisitRegistry": "0x51463E6D6f819FaC75eB68650Dd9994e5dc3e8Da",
-  "ReferralRegistry": "0xbc0fE7e51361D42981aedF8ed203693eeA7257C5"
+  "ReferralRegistry": "0xebaF3a8E0b0e7026D3C7cf042eDbd1153beDe382"
 }

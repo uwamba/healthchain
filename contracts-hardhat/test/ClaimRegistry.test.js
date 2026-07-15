@@ -122,7 +122,7 @@ describe("ClaimRegistry", function () {
 
     await expect(
       claimRegistry.connect(otherPharmacy).submitClaim(patient.address, insurer.address, [0], "x", 100)
-    ).to.be.revertedWith("Record not issued by caller");
+    ).to.be.revertedWith("Not issued or dispensed by caller");
 
     await medicalRecordRegistry.connect(pharmacy).createRecord(otherPatient.address, RecordType.Prescription, "cid-other");
     await expect(
@@ -165,6 +165,21 @@ describe("ClaimRegistry", function () {
 
     await claimRegistry.connect(patient).approvePatientVisibility(0);
     await expect(claimRegistry.connect(doctor).approveClaim(0)).to.be.revertedWith("Only the claim's insurer");
+  });
+
+  it("lets the dispensing pharmacy claim for a prescription issued by a doctor, not the pharmacy", async function () {
+    await medicalRecordRegistry.connect(doctor).createRecord(patient.address, RecordType.Prescription, "cid-doctor-rx");
+    // record 1: issuer is the doctor, not the pharmacy — submitting a claim
+    // for it should fail until the pharmacy actually dispenses it.
+    await expect(
+      claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [1], "x", 100)
+    ).to.be.revertedWith("Not issued or dispensed by caller");
+
+    await medicalRecordRegistry.connect(pharmacy).dispensePrescription(1);
+
+    await expect(claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [1], "Dispensed medication", 4000))
+      .to.emit(claimRegistry, "ClaimSubmitted")
+      .withArgs(0, patient.address, pharmacy.address, insurer.address, 4000);
   });
 
   it("tracks claims per patient, provider, and insurer", async function () {

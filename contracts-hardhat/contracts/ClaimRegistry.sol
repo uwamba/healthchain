@@ -80,11 +80,15 @@ contract ClaimRegistry {
 
     /// @notice A provider files a claim for services it rendered to a patient.
     /// @dev Every attached record must have been issued by the calling
-    /// provider for this exact patient — a provider can only claim for its
-    /// own work, not attach someone else's record to inflate a claim. Also
-    /// rejects any record already attached to an earlier claim, so batching
-    /// many dispensed prescriptions into one monthly claim can't accidentally
-    /// (or deliberately) double-bill the same service.
+    /// provider for this exact patient, OR (for a Prescription) actually
+    /// dispensed by the calling pharmacy — the prescribing doctor is the
+    /// record's issuer, but it's the dispensing pharmacy that rendered the
+    /// billable service and should be the one able to claim for it. Either
+    /// way, a provider can only claim for its own work, not attach someone
+    /// else's record to inflate a claim. Also rejects any record already
+    /// attached to an earlier claim, so batching many dispensed
+    /// prescriptions into one monthly claim can't accidentally (or
+    /// deliberately) double-bill the same service.
     function submitClaim(
         address patient,
         address insurer,
@@ -105,7 +109,9 @@ contract ClaimRegistry {
         for (uint256 i = 0; i < recordIds.length; i++) {
             (, address recordPatient, address recordIssuer, , , , , ) = medicalRecordRegistry.records(recordIds[i]);
             require(recordPatient == patient, "Record does not belong to patient");
-            require(recordIssuer == msg.sender, "Record not issued by caller");
+            bool isIssuer = recordIssuer == msg.sender;
+            bool isDispensingPharmacy = medicalRecordRegistry.dispensedBy(recordIds[i]) == msg.sender;
+            require(isIssuer || isDispensingPharmacy, "Not issued or dispensed by caller");
             require(!recordClaimed[recordIds[i]], "Record already claimed");
         }
 
