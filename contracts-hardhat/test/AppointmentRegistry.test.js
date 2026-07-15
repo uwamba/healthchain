@@ -19,9 +19,9 @@ describe("AppointmentRegistry", function () {
     appointmentRegistry = await AppointmentRegistry.deploy(identityRegistry.address);
     await appointmentRegistry.deployed();
 
-    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "");
-    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "");
-    await identityRegistry.connect(otherPatient).register(Role.Patient, "Bob", "");
+    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "", "", "");
+    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "", "", "");
+    await identityRegistry.connect(otherPatient).register(Role.Patient, "Bob", "", "", "");
 
     const latestBlock = await ethers.provider.getBlock("latest");
     futureTimestamp = latestBlock.timestamp + 3600; // 1 hour from now

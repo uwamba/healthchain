@@ -9,13 +9,15 @@ import { ROLE, roleSlug } from "@/lib/identityRegistry";
 
 // This *is* the landing page's "Create Digital Health Identity" step —
 // registration happens once per wallet and is what unlocks a role's dashboard.
+// `idLabel` varies per role since the same on-chain `idNumber` field means
+// something different depending who's registering (see IdentityRegistry.sol).
 const ROLE_OPTIONS = [
-  { role: ROLE.Patient, label: "Patient", icon: HeartPulse, needsOrg: false },
-  { role: ROLE.Doctor, label: "Doctor", icon: Stethoscope, needsOrg: false },
-  { role: ROLE.Hospital, label: "Hospital", icon: Building2, needsOrg: true },
-  { role: ROLE.Laboratory, label: "Laboratory", icon: TestTube2, needsOrg: true },
-  { role: ROLE.Pharmacy, label: "Pharmacy", icon: Building2, needsOrg: true },
-  { role: ROLE.Insurer, label: "Insurance Company", icon: ShieldCheck, needsOrg: true },
+  { role: ROLE.Patient, label: "Patient", icon: HeartPulse, needsOrg: false, idLabel: "National ID / Passport Number" },
+  { role: ROLE.Doctor, label: "Doctor", icon: Stethoscope, needsOrg: false, idLabel: "Medical License Number" },
+  { role: ROLE.Hospital, label: "Hospital", icon: Building2, needsOrg: true, idLabel: "Hospital License / Registration Number" },
+  { role: ROLE.Laboratory, label: "Laboratory", icon: TestTube2, needsOrg: true, idLabel: "Laboratory License Number" },
+  { role: ROLE.Pharmacy, label: "Pharmacy", icon: Building2, needsOrg: true, idLabel: "Pharmacy License Number" },
+  { role: ROLE.Insurer, label: "Insurance Company", icon: ShieldCheck, needsOrg: true, idLabel: "Insurance License / Registration Number" },
 ];
 
 export default function RegisterForm({ onRegistered }) {
@@ -26,6 +28,8 @@ export default function RegisterForm({ onRegistered }) {
   const [selectedRole, setSelectedRole] = useState(null);
   const [name, setName] = useState("");
   const [organization, setOrganization] = useState("");
+  const [phone, setPhone] = useState("");
+  const [idNumber, setIdNumber] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   if (!account) {
@@ -44,12 +48,19 @@ export default function RegisterForm({ onRegistered }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!selectedRole || !name.trim()) return;
+    if (!selectedRole || !name.trim() || !phone.trim() || !idNumber.trim()) return;
 
     setSubmitting(true);
     try {
       await runTx(
-        () => contracts.identity.register(selectedRole, name.trim(), organization.trim()),
+        () =>
+          contracts.identity.register(
+            selectedRole,
+            name.trim(),
+            organization.trim(),
+            phone.trim(),
+            idNumber.trim()
+          ),
         { pendingLabel: "Confirm registration in your wallet…", successLabel: "Identity created on-chain" }
       );
       await refreshRole();
@@ -114,11 +125,40 @@ export default function RegisterForm({ onRegistered }) {
             />
           </div>
         )}
+
+        <div>
+          <label className="text-sm font-medium" htmlFor="phone">
+            Phone number
+          </label>
+          <input
+            id="phone"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            required
+            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+            placeholder="e.g. +250 780 000 000"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium" htmlFor="idNumber">
+            {selectedOption?.idLabel || "ID / License Number"}
+          </label>
+          <input
+            id="idNumber"
+            value={idNumber}
+            onChange={(e) => setIdNumber(e.target.value)}
+            required
+            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+            placeholder={selectedOption?.needsOrg ? "e.g. LIC-2024-00381" : "e.g. 1198780012345678"}
+          />
+        </div>
       </div>
 
       <button
         type="submit"
-        disabled={!selectedRole || !name.trim() || submitting}
+        disabled={!selectedRole || !name.trim() || !phone.trim() || !idNumber.trim() || submitting}
         className="w-full rounded-lg bg-brand text-white px-4 py-2.5 font-medium hover:bg-brand-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Create My Digital Health Identity

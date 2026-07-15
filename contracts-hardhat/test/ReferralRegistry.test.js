@@ -29,11 +29,11 @@ describe("ReferralRegistry", function () {
     referralRegistry = await ReferralRegistry.deploy(identityRegistry.address, medicalRecordRegistry.address);
     await referralRegistry.deployed();
 
-    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "");
-    await identityRegistry.connect(otherPatient).register(Role.Patient, "Bob", "");
-    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "");
-    await identityRegistry.connect(lab).register(Role.Laboratory, "Central Lab", "Central Lab");
-    await identityRegistry.connect(otherLab).register(Role.Laboratory, "Other Lab", "Other Lab");
+    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "", "", "");
+    await identityRegistry.connect(otherPatient).register(Role.Patient, "Bob", "", "", "");
+    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "", "", "");
+    await identityRegistry.connect(lab).register(Role.Laboratory, "Central Lab", "Central Lab", "", "");
+    await identityRegistry.connect(otherLab).register(Role.Laboratory, "Other Lab", "Other Lab", "", "");
   });
 
   it("walks the full happy path: create -> approve -> complete -> approve result", async function () {

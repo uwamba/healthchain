@@ -3,14 +3,14 @@ import { getSafeFromBlock } from "@/lib/blockRange";
 export const IDENTITY_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_IDENTITY_REGISTRY_ADDRESS;
 
 export const IDENTITY_REGISTRY_ABI = [
-  "function register(uint8 role, string memory name, string memory organization)",
+  "function register(uint8 role, string memory name, string memory organization, string memory phone, string memory idNumber)",
   "function setPublicKey(bytes32 publicKey)",
   "function roleOf(address account) view returns (uint8)",
   "function isRegistered(address account) view returns (bool)",
   "function publicKeyOf(address account) view returns (bytes32)",
   "function requestHospitalAffiliation(address hospital)",
   "function confirmHospitalAffiliation(address doctor)",
-  "function profiles(address) view returns (uint8 role, string name, string organization, bytes32 publicKey, address hospital, bool registered)",
+  "function profiles(address) view returns (uint8 role, string name, string organization, string phone, string idNumber, bytes32 publicKey, address hospital, bool registered)",
   "event Registered(address indexed account, uint8 role, string name)",
   "event PublicKeySet(address indexed account, bytes32 publicKey)",
   "event HospitalAffiliationRequested(address indexed doctor, address indexed hospital)",
@@ -45,7 +45,12 @@ export async function loadPendingAffiliationRequests(identityRegistry, hospitalA
   for (const doctor of uniqueDoctors) {
     const profile = await identityRegistry.profiles(doctor);
     if (profile.hospital.toLowerCase() !== hospitalAddress.toLowerCase()) {
-      pending.push({ doctor, doctorName: profile.name });
+      pending.push({
+        doctor,
+        doctorName: profile.name,
+        doctorPhone: profile.phone,
+        doctorLicense: profile.idNumber,
+      });
     }
   }
   return pending;

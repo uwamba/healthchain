@@ -42,6 +42,10 @@ function RegisterScene() {
               ))}
             </div>
             <div className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-400">Full name</div>
+            <div className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-400">Phone number</div>
+            <div className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-400">
+              National ID / Passport Number
+            </div>
             <div className="relative">
               <button className="w-full rounded-lg bg-brand text-white px-3 py-2 text-xs font-medium">Register</button>
               <ClickCursor active={clicked} />
@@ -181,7 +185,7 @@ export const JOURNEY_ITEMS = [
     actor: "Everyone, once",
     actions: ["register(role, name)"],
     description:
-      "One on-chain registration per wallet — patient, doctor, hospital, laboratory, pharmacy, or insurer. Your role is a verified on-chain fact, never a settings toggle.",
+      "One on-chain registration per wallet — patient, doctor, hospital, laboratory, pharmacy, or insurer. Captures a name, phone, and an ID number (national ID for a patient, license number for everyone else). Your role is a verified on-chain fact, never a settings toggle.",
     Scene: RegisterScene,
   },
   {

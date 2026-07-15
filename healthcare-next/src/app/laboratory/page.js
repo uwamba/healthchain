@@ -70,7 +70,7 @@ function LaboratoryDashboard() {
         return;
       }
       const profile = await contracts.identity.profiles(trimmed);
-      setPatient({ address: trimmed, name: profile.name });
+      setPatient({ address: trimmed, name: profile.name, phone: profile.phone, idNumber: profile.idNumber });
     } catch (err) {
       console.error("Patient lookup failed:", err);
       setError(
@@ -102,7 +102,13 @@ function LaboratoryDashboard() {
           </form>
           {looking && <p className="text-xs text-gray-400">Looking up address on-chain…</p>}
           {error && <p className="text-sm text-red-500">{error}</p>}
-          {patient && <p className="text-sm font-medium">{patient.name || "Unnamed Patient"}</p>}
+          {patient && (
+            <div>
+              <p className="text-sm font-medium">{patient.name || "Unnamed Patient"}</p>
+              {patient.idNumber && <p className="text-xs text-gray-500">ID: {patient.idNumber}</p>}
+              {patient.phone && <p className="text-xs text-gray-500">{patient.phone}</p>}
+            </div>
+          )}
         </div>
 
         <h2 className="text-lg font-semibold">Upload Laboratory Result</h2>

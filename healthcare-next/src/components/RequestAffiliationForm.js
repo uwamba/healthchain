@@ -30,7 +30,12 @@ export default function RequestAffiliationForm() {
       const profile = await contracts.identity.profiles(account);
       if (profile.hospital !== ethers.constants.AddressZero) {
         const hospitalProfile = await contracts.identity.profiles(profile.hospital);
-        setCurrentHospital({ address: profile.hospital, name: hospitalProfile.organization || hospitalProfile.name });
+        setCurrentHospital({
+          address: profile.hospital,
+          name: hospitalProfile.organization || hospitalProfile.name,
+          phone: hospitalProfile.phone,
+          license: hospitalProfile.idNumber,
+        });
       } else {
         setCurrentHospital(null);
       }
@@ -64,7 +69,12 @@ export default function RequestAffiliationForm() {
         return;
       }
       const profile = await contracts.identity.profiles(trimmed);
-      setStatus({ address: trimmed, name: profile.organization || profile.name });
+      setStatus({
+        address: trimmed,
+        name: profile.organization || profile.name,
+        phone: profile.phone,
+        license: profile.idNumber,
+      });
     } catch (err) {
       console.error("Hospital lookup failed:", err);
       setError(
@@ -108,6 +118,10 @@ export default function RequestAffiliationForm() {
         <div>
           <p className="text-xs text-gray-500">Currently affiliated with</p>
           <p className="font-medium text-sm">{currentHospital.name}</p>
+          {currentHospital.license && (
+            <p className="text-xs text-gray-500">License #{currentHospital.license}</p>
+          )}
+          {currentHospital.phone && <p className="text-xs text-gray-500">{currentHospital.phone}</p>}
         </div>
       </div>
     );
@@ -131,7 +145,11 @@ export default function RequestAffiliationForm() {
 
       {status && (
         <div className="flex items-center justify-between gap-3">
-          <p className="font-medium text-sm">{status.name || "Unnamed Hospital"}</p>
+          <div>
+            <p className="font-medium text-sm">{status.name || "Unnamed Hospital"}</p>
+            {status.license && <p className="text-xs text-gray-500">License #{status.license}</p>}
+            {status.phone && <p className="text-xs text-gray-500">{status.phone}</p>}
+          </div>
           <button
             onClick={requestAffiliation}
             disabled={requesting}

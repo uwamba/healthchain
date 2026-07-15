@@ -16,21 +16,31 @@ describe("IdentityRegistry", function () {
   });
 
   it("registers a role and exposes it via roleOf", async function () {
-    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "");
+    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "", "", "");
     expect(await identityRegistry.roleOf(patient.address)).to.equal(Role.Patient);
     expect(await identityRegistry.isRegistered(patient.address)).to.equal(true);
   });
 
+  it("stores phone and idNumber alongside the rest of the profile", async function () {
+    await identityRegistry
+      .connect(patient)
+      .register(Role.Patient, "Alice", "", "+250780000000", "PID-00291");
+
+    const profile = await identityRegistry.profiles(patient.address);
+    expect(profile.phone).to.equal("+250780000000");
+    expect(profile.idNumber).to.equal("PID-00291");
+  });
+
   it("rejects registering with Role.None", async function () {
     await expect(
-      identityRegistry.connect(patient).register(Role.None, "Alice", "")
+      identityRegistry.connect(patient).register(Role.None, "Alice", "", "", "")
     ).to.be.revertedWith("Invalid role");
   });
 
   it("rejects double registration", async function () {
-    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "");
+    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "", "", "");
     await expect(
-      identityRegistry.connect(patient).register(Role.Doctor, "Alice", "")
+      identityRegistry.connect(patient).register(Role.Doctor, "Alice", "", "", "")
     ).to.be.revertedWith("Already registered");
   });
 
@@ -39,15 +49,17 @@ describe("IdentityRegistry", function () {
       identityRegistry.connect(other).setPublicKey(ethers.utils.formatBytes32String("key"))
     ).to.be.revertedWith("Not registered");
 
-    await identityRegistry.connect(other).register(Role.Patient, "Bob", "");
+    await identityRegistry.connect(other).register(Role.Patient, "Bob", "", "", "");
     const key = ethers.utils.formatBytes32String("bobkey");
     await identityRegistry.connect(other).setPublicKey(key);
     expect(await identityRegistry.publicKeyOf(other.address)).to.equal(key);
   });
 
   it("requires hospital confirmation before affiliation is recorded", async function () {
-    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "");
-    await identityRegistry.connect(hospital).register(Role.Hospital, "General Hospital", "General Hospital");
+    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "", "", "");
+    await identityRegistry
+      .connect(hospital)
+      .register(Role.Hospital, "General Hospital", "General Hospital", "", "");
 
     await identityRegistry.connect(doctor).requestHospitalAffiliation(hospital.address);
     // Not confirmed yet — profile's hospital field stays unset. We can't
@@ -60,8 +72,8 @@ describe("IdentityRegistry", function () {
   });
 
   it("rejects a non-hospital confirming an affiliation", async function () {
-    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "");
-    await identityRegistry.connect(other).register(Role.Patient, "Not a hospital", "");
+    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "", "", "");
+    await identityRegistry.connect(other).register(Role.Patient, "Not a hospital", "", "", "");
 
     await expect(
       identityRegistry.connect(other).confirmHospitalAffiliation(doctor.address)

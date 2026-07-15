@@ -19,11 +19,11 @@ describe("AccessControlRegistry", function () {
     accessControl = await AccessControlRegistry.deploy(identityRegistry.address);
     await accessControl.deployed();
 
-    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "");
-    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "");
-    await identityRegistry.connect(otherDoctor).register(Role.Doctor, "Dr. Jones", "");
-    await identityRegistry.connect(pharmacy).register(Role.Pharmacy, "Pharmacist Joe", "MedPlus");
-    await identityRegistry.connect(hospital).register(Role.Hospital, "Admin", "General Hospital");
+    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "", "", "");
+    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "", "", "");
+    await identityRegistry.connect(otherDoctor).register(Role.Doctor, "Dr. Jones", "", "", "");
+    await identityRegistry.connect(pharmacy).register(Role.Pharmacy, "Pharmacist Joe", "MedPlus", "", "");
+    await identityRegistry.connect(hospital).register(Role.Hospital, "Admin", "General Hospital", "", "");
   });
 
   it("walks the full request -> approve -> hasAccess lifecycle", async function () {

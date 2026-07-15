@@ -10,51 +10,65 @@ async function main() {
   const [deployer] = await hre.ethers.getSigners();
   console.log("Deploying with account:", deployer.address);
 
+  // The public Sepolia RPC this project uses has occasionally left a
+  // deployment transaction sitting unconfirmed in the mempool for a long
+  // time under network congestion. Explicitly bidding well above the
+  // current suggested gas price makes every tx in this script much more
+  // likely to get picked up promptly instead of stalling.
+  const suggestedGasPrice = await hre.ethers.provider.getGasPrice();
+  const gasPrice = suggestedGasPrice.mul(3);
+  const overrides = { gasPrice };
+
   const IdentityRegistry = await hre.ethers.getContractFactory("IdentityRegistry");
-  const identityRegistry = await IdentityRegistry.deploy();
+  const identityRegistry = await IdentityRegistry.deploy(overrides);
   await identityRegistry.deployed();
   console.log("IdentityRegistry deployed to:", identityRegistry.address);
 
   const AppointmentRegistry = await hre.ethers.getContractFactory("AppointmentRegistry");
-  const appointmentRegistry = await AppointmentRegistry.deploy(identityRegistry.address);
+  const appointmentRegistry = await AppointmentRegistry.deploy(identityRegistry.address, overrides);
   await appointmentRegistry.deployed();
   console.log("AppointmentRegistry deployed to:", appointmentRegistry.address);
 
   const MedicalRecordNFT = await hre.ethers.getContractFactory("MedicalRecordNFT");
-  const medicalRecordNFT = await MedicalRecordNFT.deploy();
+  const medicalRecordNFT = await MedicalRecordNFT.deploy(overrides);
   await medicalRecordNFT.deployed();
   console.log("MedicalRecordNFT deployed to:", medicalRecordNFT.address);
 
   const MedicalRecordRegistry = await hre.ethers.getContractFactory("MedicalRecordRegistry");
   const medicalRecordRegistry = await MedicalRecordRegistry.deploy(
     identityRegistry.address,
-    medicalRecordNFT.address
+    medicalRecordNFT.address,
+    overrides
   );
   await medicalRecordRegistry.deployed();
   console.log("MedicalRecordRegistry deployed to:", medicalRecordRegistry.address);
 
   // Locks MedicalRecordNFT's mint() to only be callable by the registry —
   // must happen after both are deployed, before either is used for real.
-  await (await medicalRecordNFT.setMinter(medicalRecordRegistry.address)).wait();
+  await (await medicalRecordNFT.setMinter(medicalRecordRegistry.address, overrides)).wait();
   console.log("MedicalRecordNFT minter set to MedicalRecordRegistry");
 
   const AccessControlRegistry = await hre.ethers.getContractFactory("AccessControlRegistry");
-  const accessControlRegistry = await AccessControlRegistry.deploy(identityRegistry.address);
+  const accessControlRegistry = await AccessControlRegistry.deploy(identityRegistry.address, overrides);
   await accessControlRegistry.deployed();
   console.log("AccessControlRegistry deployed to:", accessControlRegistry.address);
 
   const ClaimRegistry = await hre.ethers.getContractFactory("ClaimRegistry");
-  const claimRegistry = await ClaimRegistry.deploy(identityRegistry.address, medicalRecordRegistry.address);
+  const claimRegistry = await ClaimRegistry.deploy(identityRegistry.address, medicalRecordRegistry.address, overrides);
   await claimRegistry.deployed();
   console.log("ClaimRegistry deployed to:", claimRegistry.address);
 
   const VisitRegistry = await hre.ethers.getContractFactory("VisitRegistry");
-  const visitRegistry = await VisitRegistry.deploy(identityRegistry.address);
+  const visitRegistry = await VisitRegistry.deploy(identityRegistry.address, overrides);
   await visitRegistry.deployed();
   console.log("VisitRegistry deployed to:", visitRegistry.address);
 
   const ReferralRegistry = await hre.ethers.getContractFactory("ReferralRegistry");
-  const referralRegistry = await ReferralRegistry.deploy(identityRegistry.address, medicalRecordRegistry.address);
+  const referralRegistry = await ReferralRegistry.deploy(
+    identityRegistry.address,
+    medicalRecordRegistry.address,
+    overrides
+  );
   await referralRegistry.deployed();
   console.log("ReferralRegistry deployed to:", referralRegistry.address);
 

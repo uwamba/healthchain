@@ -29,12 +29,12 @@ describe("ClaimRegistry", function () {
     claimRegistry = await ClaimRegistry.deploy(identityRegistry.address, medicalRecordRegistry.address);
     await claimRegistry.deployed();
 
-    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "");
-    await identityRegistry.connect(otherPatient).register(Role.Patient, "Bob", "");
-    await identityRegistry.connect(pharmacy).register(Role.Pharmacy, "Central Pharmacy", "Central Pharmacy");
-    await identityRegistry.connect(otherPharmacy).register(Role.Pharmacy, "Other Pharmacy", "Other Pharmacy");
-    await identityRegistry.connect(insurer).register(Role.Insurer, "Acme Insurance", "Acme Insurance");
-    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "");
+    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "", "", "");
+    await identityRegistry.connect(otherPatient).register(Role.Patient, "Bob", "", "", "");
+    await identityRegistry.connect(pharmacy).register(Role.Pharmacy, "Central Pharmacy", "Central Pharmacy", "", "");
+    await identityRegistry.connect(otherPharmacy).register(Role.Pharmacy, "Other Pharmacy", "Other Pharmacy", "", "");
+    await identityRegistry.connect(insurer).register(Role.Insurer, "Acme Insurance", "Acme Insurance", "", "");
+    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "", "", "");
 
     await medicalRecordRegistry.connect(pharmacy).createRecord(patient.address, RecordType.Prescription, "cid-rx");
   });

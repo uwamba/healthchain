@@ -26,10 +26,10 @@ describe("MedicalRecordRegistry", function () {
 
     await nft.setMinter(registry.address);
 
-    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "");
-    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "");
-    await identityRegistry.connect(pharmacy).register(Role.Pharmacy, "Central Pharmacy", "Central Pharmacy");
-    await identityRegistry.connect(otherPatient).register(Role.Patient, "Bob", "");
+    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "", "", "");
+    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "", "", "");
+    await identityRegistry.connect(pharmacy).register(Role.Pharmacy, "Central Pharmacy", "Central Pharmacy", "", "");
+    await identityRegistry.connect(otherPatient).register(Role.Patient, "Bob", "", "", "");
   });
 
   it("creates a record, mints an NFT to the patient, and tracks it in recordsOfPatient", async function () {

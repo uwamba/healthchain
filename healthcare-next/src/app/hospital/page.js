@@ -211,6 +211,10 @@ function HospitalDashboard() {
                         <p className="text-xs text-gray-500 font-mono">
                           {d.doctor.slice(0, 6)}…{d.doctor.slice(-4)}
                         </p>
+                        {d.doctorLicense && (
+                          <p className="text-xs text-gray-500">License #{d.doctorLicense}</p>
+                        )}
+                        {d.doctorPhone && <p className="text-xs text-gray-500">{d.doctorPhone}</p>}
                       </div>
                       <button
                         onClick={() => confirmAffiliation(d.doctor)}

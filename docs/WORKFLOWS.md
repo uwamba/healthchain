@@ -26,7 +26,9 @@ Connect Wallet
     ▼
 WalletContext.connect() calls IdentityRegistry.roleOf(address) directly
     │
-    ├─ role == None  → registration modal opens: pick role + name
+    ├─ role == None  → registration modal opens: pick role + name + phone
+    │                    + an ID number (national ID/passport for a patient,
+    │                    license/registration number for every other role)
     │                    (+ organization, for Hospital/Lab/Pharmacy/Insurer)
     │                    → IdentityRegistry.register() → dashboard
     │
@@ -227,12 +229,12 @@ the Hospital dashboard's UI — flagged here rather than silently left out.
 
 | Role | Registers with | Can do |
 |---|---|---|
-| **Patient** | name only | Approve/cancel hospital check-ins; approve/deny doctor access requests (24h/7d/30d) and revoke early; approve/deny lab referrals both directions; approve/deny claim visibility; book/cancel appointments; always see their own full record history |
-| **Doctor** | name only | See patients checked in and assigned to them; request access to any patient (address lookup or via a checked-in assignment); once granted, view history and create Consultation/Prescription records; refer to a lab; request hospital affiliation |
-| **Hospital** | name + organization | Check in a walked-in patient (QR); assign a checked-in patient to a doctor; confirm a doctor's affiliation request; view network-wide stats, activity log, and analytics |
-| **Laboratory** | name + organization | Create LabResult/Imaging records for any registered patient directly; see and complete referrals assigned to them; file insurance claims for records they issued |
-| **Pharmacy** | name + organization | Scan/verify a Prescription record and dispense it once (fast path); or look a patient up by address, request access, and once approved see their Prescription records and dispense from a persistent "My Patients" list; batch several unbilled dispensed prescriptions into one claim per patient whenever they choose |
-| **Insurance** | name + organization | See claims only after the patient approves visibility, for a 30-day window; cross-check record validity; approve/reject; request renewal once the window lapses |
+| **Patient** | name, phone, National ID/passport | Approve/cancel hospital check-ins; approve/deny doctor access requests (24h/7d/30d) and revoke early; approve/deny lab referrals both directions; approve/deny claim visibility; book/cancel appointments; always see their own full record history |
+| **Doctor** | name, phone, medical license # | See patients checked in and assigned to them; request access to any patient (address lookup or via a checked-in assignment); once granted, view history and create Consultation/Prescription records; refer to a lab; request hospital affiliation |
+| **Hospital** | name, phone, org, license # | Check in a walked-in patient (QR); assign a checked-in patient to a doctor; confirm a doctor's affiliation request; view network-wide stats, activity log, and analytics |
+| **Laboratory** | name, phone, org, license # | Create LabResult/Imaging records for any registered patient directly; see and complete referrals assigned to them; file insurance claims for records they issued |
+| **Pharmacy** | name, phone, org, license # | Scan/verify a Prescription record and dispense it once (fast path); or look a patient up by address, request access, and once approved see their Prescription records and dispense from a persistent "My Patients" list; batch several unbilled dispensed prescriptions into one claim per patient whenever they choose |
+| **Insurance** | name, phone, org, license # | See claims only after the patient approves visibility, for a 30-day window; cross-check record validity; approve/reject; request renewal once the window lapses |
 
 ## Architecture note: why 3 new contracts, not fewer
 

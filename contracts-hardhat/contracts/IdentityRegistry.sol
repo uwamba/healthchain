@@ -14,6 +14,12 @@ contract IdentityRegistry {
         Role role;
         string name;
         string organization; // hospital/lab/pharmacy/insurer name; unused for patients
+        string phone;
+        string idNumber;     // National ID/passport for a Patient; professional
+                              // license or business registration number for
+                              // Doctor/Hospital/Laboratory/Pharmacy/Insurer —
+                              // same field, role-appropriate meaning, labeled
+                              // by the frontend.
         bytes32 publicKey;   // Curve25519 public key for record encryption (set later, see setPublicKey)
         address hospital;    // doctor's confirmed hospital affiliation, address(0) if none
         bool registered;
@@ -30,10 +36,16 @@ contract IdentityRegistry {
     /// @param role Any role other than None.
     /// @param name Display name.
     /// @param organization Hospital/lab/pharmacy/insurer name; unused for patients.
+    /// @param phone Contact phone number.
+    /// @param idNumber National ID/passport (Patient) or professional/business
+    /// license number (every other role) — not validated on-chain, same as
+    /// `organization` today.
     function register(
         Role role,
         string memory name,
-        string memory organization
+        string memory organization,
+        string memory phone,
+        string memory idNumber
     ) external {
         require(role != Role.None, "Invalid role");
         require(!profiles[msg.sender].registered, "Already registered");
@@ -42,6 +54,8 @@ contract IdentityRegistry {
             role: role,
             name: name,
             organization: organization,
+            phone: phone,
+            idNumber: idNumber,
             publicKey: bytes32(0),
             hospital: address(0),
             registered: true

@@ -19,10 +19,10 @@ describe("VisitRegistry", function () {
     visitRegistry = await VisitRegistry.deploy(identityRegistry.address);
     await visitRegistry.deployed();
 
-    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "");
-    await identityRegistry.connect(hospital).register(Role.Hospital, "Front Desk", "Central Hospital");
-    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "");
-    await identityRegistry.connect(otherHospital).register(Role.Hospital, "Front Desk 2", "Other Hospital");
+    await identityRegistry.connect(patient).register(Role.Patient, "Alice", "", "", "");
+    await identityRegistry.connect(hospital).register(Role.Hospital, "Front Desk", "Central Hospital", "", "");
+    await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "", "", "");
+    await identityRegistry.connect(otherHospital).register(Role.Hospital, "Front Desk 2", "Other Hospital", "", "");
   });
 
   it("lets a hospital request a visit and the patient approve it", async function () {

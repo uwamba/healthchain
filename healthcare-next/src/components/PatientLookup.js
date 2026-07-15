@@ -42,7 +42,13 @@ export default function PatientLookup({ onPatientResolved }) {
 
       const profile = await contracts.identity.profiles(trimmed);
       const hasAccess = await contracts.access.hasAccess(trimmed, account);
-      const resolved = { address: trimmed, name: profile.name, hasAccess };
+      const resolved = {
+        address: trimmed,
+        name: profile.name,
+        phone: profile.phone,
+        idNumber: profile.idNumber,
+        hasAccess,
+      };
       setStatus(resolved);
       onPatientResolved?.(resolved);
     } catch (err) {
@@ -90,6 +96,8 @@ export default function PatientLookup({ onPatientResolved }) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="font-medium text-sm">{status.name || "Unnamed Patient"}</p>
+            {status.idNumber && <p className="text-xs text-gray-500">ID: {status.idNumber}</p>}
+            {status.phone && <p className="text-xs text-gray-500">{status.phone}</p>}
             <p className="text-xs text-gray-500">
               {status.hasAccess ? "You have active access to their records" : "No access yet"}
             </p>
