@@ -99,7 +99,10 @@ function InsurerDashboard() {
         </div>
         <div>
           <h1 className="text-2xl font-semibold">Insurance Dashboard</h1>
-          <p className="text-gray-500 text-sm">Claims are only visible here once the patient has approved them.</p>
+          <p className="text-gray-500 text-sm">
+            Hospital and Laboratory claims are only visible here once the patient approves them; Pharmacy claims are
+            visible immediately.
+          </p>
         </div>
       </div>
 

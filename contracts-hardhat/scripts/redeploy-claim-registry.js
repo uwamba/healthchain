@@ -24,8 +24,11 @@ async function main() {
   console.log("Reusing IdentityRegistry at:", existing.IdentityRegistry);
   console.log("Reusing MedicalRecordRegistry at:", existing.MedicalRecordRegistry);
 
+  const suggestedGasPrice = await hre.ethers.provider.getGasPrice();
+  const overrides = { gasPrice: suggestedGasPrice.mul(3) };
+
   const ClaimRegistry = await hre.ethers.getContractFactory("ClaimRegistry");
-  const claimRegistry = await ClaimRegistry.deploy(existing.IdentityRegistry, existing.MedicalRecordRegistry);
+  const claimRegistry = await ClaimRegistry.deploy(existing.IdentityRegistry, existing.MedicalRecordRegistry, overrides);
   await claimRegistry.deployed();
   console.log("New ClaimRegistry deployed to:", claimRegistry.address);
 
@@ -35,6 +38,7 @@ async function main() {
 
   console.log("\nUpdate this one line in healthcare-next/.env.local:\n");
   console.log(`NEXT_PUBLIC_CLAIM_REGISTRY_ADDRESS=${claimRegistry.address}`);
+  console.log("\nWrote addresses to", outFile);
 }
 
 main().catch((error) => {

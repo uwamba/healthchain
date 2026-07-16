@@ -12,12 +12,18 @@
   lifecycle, not two parallel access-control systems — see
   `docs/ARCHITECTURE.md`.) The approval, denial, and any early revocation
   are all immutable, timestamped, on-chain facts.
-- **Insurance claim visibility is patient-gated and time-boxed** — a claim
-  a provider submits is invisible to the insurer until the patient calls
-  `approvePatientVisibility()`, and that approval only opens a 30-day
-  window (`ClaimRegistry.VISIBILITY_PERIOD`) rather than permanent access.
-  A record can never be attached to more than one claim
-  (`recordClaimed`), so batching many dispensed prescriptions into one
+- **Insurance claim visibility is patient-gated (for Hospital/Laboratory)
+  and always time-boxed** — a Hospital or Laboratory claim is invisible to
+  the insurer until the patient calls `approvePatientVisibility()`, and
+  that approval only opens a 30-day window (`ClaimRegistry.VISIBILITY_PERIOD`)
+  rather than permanent access. A Pharmacy claim skips straight to that same
+  30-day window on submission — deliberately, not an oversight: by the time
+  a pharmacy dispenses a prescription, the patient has already consented
+  once already (presenting their own prescription QR, or approving the
+  pharmacy's `AccessControlRegistry` request), so a third approval just to
+  let their own insurer see the claim would be a redundant gate rather than
+  an additional safeguard. A record can never be attached to more than one
+  claim (`recordClaimed`), so batching many unbilled records into one
   monthly claim can't accidentally double-bill the same service.
 - **Non-repudiation of clinical actions** — every record creation,
   prescription dispense, and appointment booking/cancellation is an

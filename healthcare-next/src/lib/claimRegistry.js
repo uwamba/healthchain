@@ -17,6 +17,7 @@ export const CLAIM_REGISTRY_ABI = [
   "function claims(uint256) view returns (uint256 id, address patient, address provider, address insurer, string description, uint256 amount, uint8 status, uint256 createdAt, uint256 visibilityExpiresAt)",
   "event ClaimSubmitted(uint256 indexed id, address indexed patient, address indexed provider, address insurer, uint256 amount)",
   "event ClaimPatientApproved(uint256 indexed id, uint256 visibilityExpiresAt)",
+  "event ClaimAutoApproved(uint256 indexed id, uint256 visibilityExpiresAt)",
   "event ClaimPatientDenied(uint256 indexed id)",
   "event ClaimApproved(uint256 indexed id)",
   "event ClaimRejected(uint256 indexed id)",

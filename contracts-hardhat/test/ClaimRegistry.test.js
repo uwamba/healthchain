@@ -3,14 +3,18 @@ const { ethers } = require("hardhat");
 
 describe("ClaimRegistry", function () {
   let identityRegistry, nft, medicalRecordRegistry, claimRegistry;
-  let patient, otherPatient, pharmacy, otherPharmacy, insurer, doctor;
+  let patient, otherPatient, pharmacy, otherPharmacy, insurer, doctor, hospital;
 
   const Role = { None: 0, Patient: 1, Doctor: 2, Hospital: 3, Laboratory: 4, Pharmacy: 5, Insurer: 6 };
   const RecordType = { Consultation: 0, LabResult: 1, Prescription: 2, Imaging: 3, Discharge: 4, Vaccination: 5 };
   const ClaimStatus = { AwaitingPatientApproval: 0, Pending: 1, Approved: 2, Rejected: 3, PatientDenied: 4 };
 
+  // Every test starts with two records already in place: id 0 is a
+  // Prescription the pharmacy issued directly (used for pharmacy's
+  // auto-approval behavior), id 1 is a Consultation the hospital issued
+  // (used for the still-gated Hospital/Laboratory approval flow).
   beforeEach(async function () {
-    [patient, otherPatient, pharmacy, otherPharmacy, insurer, doctor] = await ethers.getSigners();
+    [patient, otherPatient, pharmacy, otherPharmacy, insurer, doctor, hospital] = await ethers.getSigners();
 
     const IdentityRegistry = await ethers.getContractFactory("IdentityRegistry");
     identityRegistry = await IdentityRegistry.deploy();
@@ -35,14 +39,35 @@ describe("ClaimRegistry", function () {
     await identityRegistry.connect(otherPharmacy).register(Role.Pharmacy, "Other Pharmacy", "Other Pharmacy", "", "");
     await identityRegistry.connect(insurer).register(Role.Insurer, "Acme Insurance", "Acme Insurance", "", "");
     await identityRegistry.connect(doctor).register(Role.Doctor, "Dr. Smith", "", "", "");
+    await identityRegistry.connect(hospital).register(Role.Hospital, "General Hospital", "General Hospital", "", "");
 
-    await medicalRecordRegistry.connect(pharmacy).createRecord(patient.address, RecordType.Prescription, "cid-rx");
+    await medicalRecordRegistry.connect(pharmacy).createRecord(patient.address, RecordType.Prescription, "cid-rx"); // id 0
+    await medicalRecordRegistry.connect(hospital).createRecord(patient.address, RecordType.Consultation, "cid-consult"); // id 1
   });
 
-  it("walks the full happy path: submit -> patient approves visibility -> insurer approves", async function () {
-    await expect(claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [0], "Dispensed medication", 5000))
+  it("auto-approves a pharmacy-submitted claim, skipping patient approval entirely", async function () {
+    const tx = await claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [0], "Dispensed medication", 5000);
+    const receipt = await tx.wait();
+    const block = await ethers.provider.getBlock(receipt.blockNumber);
+    const expectedExpiry = block.timestamp + 30 * 24 * 60 * 60;
+
+    await expect(tx).to.emit(claimRegistry, "ClaimSubmitted").withArgs(0, patient.address, pharmacy.address, insurer.address, 5000);
+    await expect(tx).to.emit(claimRegistry, "ClaimAutoApproved").withArgs(0, expectedExpiry);
+
+    const claim = await claimRegistry.claims(0);
+    expect(claim.status).to.equal(ClaimStatus.Pending);
+    expect(await claimRegistry.hasFullVisibility(0)).to.equal(true);
+
+    // Already past AwaitingPatientApproval — there's nothing left to approve.
+    await expect(claimRegistry.connect(patient).approvePatientVisibility(0)).to.be.revertedWith("Not awaiting approval");
+
+    await expect(claimRegistry.connect(insurer).approveClaim(0)).to.emit(claimRegistry, "ClaimApproved").withArgs(0);
+  });
+
+  it("walks the full happy path for a hospital claim: submit -> patient approves visibility -> insurer approves", async function () {
+    await expect(claimRegistry.connect(hospital).submitClaim(patient.address, insurer.address, [1], "Consultation", 5000))
       .to.emit(claimRegistry, "ClaimSubmitted")
-      .withArgs(0, patient.address, pharmacy.address, insurer.address, 5000);
+      .withArgs(0, patient.address, hospital.address, insurer.address, 5000);
 
     let claim = await claimRegistry.claims(0);
     expect(claim.status).to.equal(ClaimStatus.AwaitingPatientApproval);
@@ -65,11 +90,11 @@ describe("ClaimRegistry", function () {
   });
 
   it("submits one claim bundling multiple records for the same patient", async function () {
-    await medicalRecordRegistry.connect(pharmacy).createRecord(patient.address, RecordType.Prescription, "cid-rx-2");
+    await medicalRecordRegistry.connect(pharmacy).createRecord(patient.address, RecordType.Prescription, "cid-rx-2"); // id 2
 
-    await claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [0, 1], "Two prescriptions", 9000);
+    await claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [0, 2], "Two prescriptions", 9000);
     const recordIds = await claimRegistry.getClaimRecordIds(0);
-    expect(recordIds.map((n) => n.toNumber())).to.deep.equal([0, 1]);
+    expect(recordIds.map((n) => n.toNumber())).to.deep.equal([0, 2]);
   });
 
   it("rejects attaching a record that was already claimed", async function () {
@@ -81,7 +106,7 @@ describe("ClaimRegistry", function () {
   });
 
   it("expires full visibility after 30 days and lets the patient renew it", async function () {
-    await claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [0], "x", 100);
+    await claimRegistry.connect(hospital).submitClaim(patient.address, insurer.address, [1], "x", 100);
     await claimRegistry.connect(patient).approvePatientVisibility(0);
     expect(await claimRegistry.hasFullVisibility(0)).to.equal(true);
 
@@ -109,10 +134,28 @@ describe("ClaimRegistry", function () {
   });
 
   it("rejects requesting a visibility renewal while still within the window", async function () {
-    await claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [0], "x", 100);
+    await claimRegistry.connect(hospital).submitClaim(patient.address, insurer.address, [1], "x", 100);
     await claimRegistry.connect(patient).approvePatientVisibility(0);
 
     await expect(claimRegistry.connect(insurer).requestVisibilityRenewal(0)).to.be.revertedWith("Still visible");
+  });
+
+  it("lets the dispensing pharmacy claim for a prescription issued by a doctor, not the pharmacy", async function () {
+    await medicalRecordRegistry.connect(doctor).createRecord(patient.address, RecordType.Prescription, "cid-doctor-rx"); // id 2
+    // record 2: issuer is the doctor, not the pharmacy — submitting a claim
+    // for it should fail until the pharmacy actually dispenses it.
+    await expect(
+      claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [2], "x", 100)
+    ).to.be.revertedWith("Not issued or dispensed by caller");
+
+    await medicalRecordRegistry.connect(pharmacy).dispensePrescription(2);
+
+    await expect(claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [2], "Dispensed medication", 4000))
+      .to.emit(claimRegistry, "ClaimSubmitted")
+      .withArgs(0, patient.address, pharmacy.address, insurer.address, 4000);
+
+    // Same auto-approval as any other pharmacy claim.
+    expect(await claimRegistry.hasFullVisibility(0)).to.equal(true);
   });
 
   it("rejects submitClaim from a non-provider, for a record it didn't issue, or belonging to a different patient", async function () {
@@ -124,9 +167,9 @@ describe("ClaimRegistry", function () {
       claimRegistry.connect(otherPharmacy).submitClaim(patient.address, insurer.address, [0], "x", 100)
     ).to.be.revertedWith("Not issued or dispensed by caller");
 
-    await medicalRecordRegistry.connect(pharmacy).createRecord(otherPatient.address, RecordType.Prescription, "cid-other");
+    await medicalRecordRegistry.connect(pharmacy).createRecord(otherPatient.address, RecordType.Prescription, "cid-other"); // id 2
     await expect(
-      claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [1], "x", 100)
+      claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [2], "x", 100)
     ).to.be.revertedWith("Record does not belong to patient");
   });
 
@@ -139,15 +182,15 @@ describe("ClaimRegistry", function () {
     ).to.be.revertedWith("Not an insurer");
   });
 
-  it("blocks the insurer from acting before the patient approves visibility", async function () {
-    await claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [0], "x", 100);
+  it("blocks the insurer from acting before the patient approves a hospital claim's visibility", async function () {
+    await claimRegistry.connect(hospital).submitClaim(patient.address, insurer.address, [1], "x", 100);
 
     await expect(claimRegistry.connect(insurer).approveClaim(0)).to.be.revertedWith("Not pending");
     await expect(claimRegistry.connect(insurer).rejectClaim(0)).to.be.revertedWith("Not pending");
   });
 
-  it("lets the patient deny visibility, permanently hiding the claim from insurer action", async function () {
-    await claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [0], "x", 100);
+  it("lets the patient deny visibility on a hospital claim, permanently hiding it from insurer action", async function () {
+    await claimRegistry.connect(hospital).submitClaim(patient.address, insurer.address, [1], "x", 100);
 
     await expect(claimRegistry.connect(patient).denyPatientVisibility(0))
       .to.emit(claimRegistry, "ClaimPatientDenied")
@@ -157,7 +200,7 @@ describe("ClaimRegistry", function () {
   });
 
   it("only lets the claim's own patient approve/deny visibility, and only the claim's own insurer decide it", async function () {
-    await claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [0], "x", 100);
+    await claimRegistry.connect(hospital).submitClaim(patient.address, insurer.address, [1], "x", 100);
 
     await expect(claimRegistry.connect(otherPatient).approvePatientVisibility(0)).to.be.revertedWith(
       "Only the patient"
@@ -165,21 +208,6 @@ describe("ClaimRegistry", function () {
 
     await claimRegistry.connect(patient).approvePatientVisibility(0);
     await expect(claimRegistry.connect(doctor).approveClaim(0)).to.be.revertedWith("Only the claim's insurer");
-  });
-
-  it("lets the dispensing pharmacy claim for a prescription issued by a doctor, not the pharmacy", async function () {
-    await medicalRecordRegistry.connect(doctor).createRecord(patient.address, RecordType.Prescription, "cid-doctor-rx");
-    // record 1: issuer is the doctor, not the pharmacy — submitting a claim
-    // for it should fail until the pharmacy actually dispenses it.
-    await expect(
-      claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [1], "x", 100)
-    ).to.be.revertedWith("Not issued or dispensed by caller");
-
-    await medicalRecordRegistry.connect(pharmacy).dispensePrescription(1);
-
-    await expect(claimRegistry.connect(pharmacy).submitClaim(patient.address, insurer.address, [1], "Dispensed medication", 4000))
-      .to.emit(claimRegistry, "ClaimSubmitted")
-      .withArgs(0, patient.address, pharmacy.address, insurer.address, 4000);
   });
 
   it("tracks claims per patient, provider, and insurer", async function () {

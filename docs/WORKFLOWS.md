@@ -51,16 +51,26 @@ Patient scans it (or already has the app open) → Pending Check-Ins panel
 Patient taps "Confirm Check-In" → VisitRegistry.approveVisit()
     │
     ▼
-Hospital's "Checked-In — Assign a Doctor" list shows the patient
+Hospital's "Checked-In — Assign a Doctor" list shows the patient (also
+summarized on the Overview tab as "Currently Checked-In")
     │
     ▼
-Hospital enters a doctor's address → assignDoctor(visitId, doctor)
+Hospital picks a doctor from a dropdown of its own confirmed-affiliated
+doctors (see "Affiliated Doctors" below) → assignDoctor(visitId, doctor)
 ```
 
 `assignDoctor` is a **dispatch hint only** — it does not grant the doctor
 record access by itself. It never touches `AccessControlRegistry`. This is
 deliberate: a compromised Hospital account must never be able to grant a
 doctor access to a patient's records without the patient's own signature.
+
+**Affiliated Doctors roster:** the Hospital dashboard's "Doctor Affiliations"
+tab shows both pending affiliation requests (§1) and, below them, every
+doctor whose affiliation has already been confirmed — the same roster the
+Check-In tab's assignment dropdown draws from, found via the
+`HospitalAffiliationConfirmed` event log rather than a free-text address
+(a hospital dispatches to its own staff, not an arbitrary registered
+doctor).
 
 ## 3. Doctor sees the checked-in patient and requests access
 
@@ -164,46 +174,65 @@ Both paths call the exact same `dispensePrescription(recordId)` — the
 difference is purely how the pharmacy found the record, not what dispensing
 does.
 
-## 6. Insurance claims — filed by the provider, gated by the patient, time-boxed
+## 6. Insurance claims — filed by the provider, time-boxed, gated for Hospital/Lab only
 
 ```
-Pharmacy (after dispense, or batched later — see below) / Laboratory
+Pharmacy (after dispense, or batched later) / Hospital (batched from Billing
+& Claims) / Laboratory
   "File Insurance Claim": insurer address + description + amount + one or
   more recordIds this same provider either issued OR (Pharmacy only)
   actually dispensed — a prescription's issuer is the prescribing doctor,
   but it's the dispensing pharmacy that rendered the billable service and
   can claim for it
     → ClaimRegistry.submitClaim(patient, insurer, [recordIds...], ...)
-    → status: AwaitingPatientApproval (insurer can't see or act on it yet)
     → each attached recordId is marked claimed — it can never be attached
       to a second claim, even a rejected one
     │
-    ▼
-Patient's "Claims Awaiting Your Approval" panel
-  Approve → approvePatientVisibility() → status: Pending, opens a 30-day
-    full-visibility window (visibilityExpiresAt = now + 30 days)
-  Deny    → denyPatientVisibility()    → insurer never sees it
+    ├─ Pharmacy submitter → status: Pending immediately, visibility window
+    │    already open (visibilityExpiresAt = now + 30 days) — see below for
+    │    why this one provider skips the patient-approval step
+    │
+    └─ Hospital / Laboratory submitter → status: AwaitingPatientApproval
+         │
+         ▼
+       Patient's "Claims Awaiting Your Approval" panel
+         Approve → approvePatientVisibility() → status: Pending, opens the
+           same 30-day full-visibility window
+         Deny    → denyPatientVisibility()    → insurer never sees it
     │
     ▼
 Insurance Dashboard — "Pending Claims" / "Claim History"
   While hasFullVisibility(claimId) is true: description, attached records
   (cross-checked live against MedicalRecordRegistry — "blockchain
   validity" is this check, not a separate contract state), and Approve/
-  Reject are all shown, same as before
+  Reject are all shown
     │
     ▼
   Approve / Reject → claim resolved, moves to "Claim History"
 ```
 
+**Why Pharmacy skips patient approval and Hospital/Laboratory don't:** by
+the time a pharmacy dispenses a prescription, the patient has already
+consented once already — either by presenting their own prescription QR in
+person, or by approving the pharmacy's `AccessControlRegistry` access
+request (§5). Requiring a *third* consent action just to let the patient's
+own insurer see the claim would be a redundant gate, not an additional
+safeguard, so `submitClaim` sets a Pharmacy claim straight to `Pending`
+with its visibility window already open (emits `ClaimAutoApproved` instead
+of waiting on `ClaimPatientApproved`). Hospital and Laboratory claims aren't
+necessarily preceded by any equivalent patient-side consent action, so they
+keep the explicit approval gate.
+
 **Batching, since there's no on-chain scheduler:** Pharmacy's dashboard has
-a "Batch Insurance Claims" panel listing every dispensed prescription that
-hasn't been billed yet, grouped by patient — the pharmacist selects several
-and submits one claim per patient whenever they choose to reconcile (e.g.
-monthly). This works because `submitClaim` already accepts an array of
-`recordIds`; "monthly" is a habit the pharmacist keeps, not a rule the
-contract enforces (there is no cron/scheduler in Solidity, and a server
-auto-signing transactions on the pharmacy's behalf would mean a custodial
-hot wallet — the one thing this whole app is built to avoid).
+a "Batch Insurance Claims" panel, and Hospital's "Billing & Claims" tab has
+the same panel under "File Insurance Claims" — both list every unbilled
+record grouped by patient, letting the provider select several and submit
+one claim per patient whenever they choose to reconcile (e.g. monthly).
+This works because `submitClaim` already accepts an array of `recordIds`;
+"monthly" is a habit the provider keeps, not a rule the contract enforces
+(there is no cron/scheduler in Solidity, and a server auto-signing
+transactions on the provider's behalf would mean a custodial hot wallet —
+the one thing this whole app is built to avoid).
 
 **After the 30-day window lapses:** `hasFullVisibility` flips false. The
 insurer's dashboard stops showing the description and attached records —
@@ -212,21 +241,18 @@ same non-sensitive fields already carried by `ClaimSubmitted`'s event log.
 A "Request Renewal" button appears instead of Approve/Reject;
 `requestVisibilityRenewal()` (provider or insurer) surfaces on the
 patient's "Claim Visibility Renewals" panel, and only the patient's own
-`approveVisibilityRenewal()` reopens a fresh 30-day window. See
+`approveVisibilityRenewal()` reopens a fresh 30-day window. This applies
+equally to a Pharmacy claim's window once its initial 30 days lapse. See
 `docs/SECURITY.md` for why this is a frontend policy gate rather than
 actual encryption, same as every other "gated" view in this app.
 
-Submission is the provider's paperwork; the patient's approval — not the
-submission — is their real consent action, matching how this actually works
-in person (done right after the service, e.g. at the pharmacy counter).
-
-**Scope note:** Hospital is a contractually-valid claim submitter too
-(`ClaimRegistry.submitClaim` accepts Hospital/Laboratory/Pharmacy), but the
-current Hospital dashboard doesn't issue `MedicalRecordRegistry` records
-itself (only Doctor and Laboratory do, plus Pharmacy's dispense action), and
-a claim can only attach records the submitting provider actually issued. So
-hospital-initiated claims are supported on-chain but not yet reachable from
-the Hospital dashboard's UI — flagged here rather than silently left out.
+**Hospital billing:** the Hospital dashboard's "Billing & Claims" tab has a
+"Log Service / Bill" form — `createRecord(patient, type, cid)` for a
+checked-in patient, for any type except Prescription (Consultation,
+LabResult, Imaging, Discharge, Vaccination), since prescriptions stay a
+doctor's clinical act tied to the pharmacy dispense flow. Logged services
+that haven't been claimed yet feed directly into the same batch-claim panel
+described above.
 
 ## 7. Appointments — separate from the in-person visit flow
 
@@ -256,10 +282,10 @@ confirmation does.
 |---|---|---|
 | **Patient** | name, phone, National ID/passport | Approve/cancel hospital check-ins; approve/deny doctor access requests (24h/7d/30d) and revoke early; approve/deny lab referrals both directions; approve/deny claim visibility; book/cancel appointments; always see their own full record history |
 | **Doctor** | name, phone, medical license # | See patients checked in and assigned to them; request access to any patient (address lookup or via a checked-in assignment); once granted, view history and create Consultation/Prescription records; refer to a lab; request hospital affiliation |
-| **Hospital** | name, phone, org, license # | Check in a walked-in patient (QR); assign a checked-in patient to a doctor; confirm a doctor's affiliation request; view network-wide stats, activity log, and analytics |
+| **Hospital** | name, phone, org, license # | Check in a walked-in patient (QR); assign a checked-in patient to one of its own affiliated doctors (dropdown); confirm a doctor's affiliation request and see its full affiliated-doctor roster; log a billable service (Consultation/LabResult/Imaging/Discharge/Vaccination) for a checked-in patient; batch unbilled services into insurance claims (still patient-approval-gated); view network-wide stats, activity log, and analytics |
 | **Laboratory** | name, phone, org, license # | Create LabResult/Imaging records for any registered patient directly; see and complete referrals assigned to them; file insurance claims for records they issued |
-| **Pharmacy** | name, phone, org, license # | Scan/verify a Prescription record and dispense it once (fast path); or look a patient up by address, request access, and once approved see their Prescription records and dispense from a persistent "My Patients" list; batch several unbilled dispensed prescriptions into one claim per patient whenever they choose |
-| **Insurance** | name, phone, org, license # | See claims only after the patient approves visibility, for a 30-day window; cross-check record validity; approve/reject; request renewal once the window lapses |
+| **Pharmacy** | name, phone, org, license # | Scan/verify a Prescription record and dispense it once (fast path); or look a patient up by address, request access, and once approved see their Prescription records and dispense from a persistent "My Patients" list; batch several unbilled dispensed prescriptions into one claim per patient whenever they choose — visible to the insurer immediately, no patient approval step |
+| **Insurance** | name, phone, org, license # | See Hospital/Laboratory claims only after the patient approves visibility (Pharmacy claims are visible immediately), for a 30-day window; cross-check record validity; approve/reject; request renewal once the window lapses |
 
 ## Architecture note: why 3 new contracts, not fewer
 

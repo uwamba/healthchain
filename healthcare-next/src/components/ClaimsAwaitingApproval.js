@@ -51,7 +51,7 @@ export default function ClaimsAwaitingApproval({ claims, providerNames, insurerN
       <EmptyState
         icon={ShieldCheck}
         title="No claims awaiting approval"
-        description="When a hospital, lab, or pharmacy files an insurance claim for you, it stays hidden from the insurer until you approve it here."
+        description="When a hospital or lab files an insurance claim for you, it stays hidden from the insurer until you approve it here. Pharmacy claims skip this step since you've already consented via the dispense itself."
       />
     );
   }

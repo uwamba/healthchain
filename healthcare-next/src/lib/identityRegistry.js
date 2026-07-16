@@ -55,3 +55,28 @@ export async function loadPendingAffiliationRequests(identityRegistry, hospitalA
   }
   return pending;
 }
+
+// Same event-log-then-recheck approach, but for doctors whose affiliation
+// has already been confirmed — backs the Hospital dashboard's "Affiliated
+// Doctors" roster, used both as a directory and as the source list for
+// assigning a checked-in patient to one of the hospital's own doctors.
+export async function loadConfirmedDoctorsForHospital(identityRegistry, hospitalAddress) {
+  const fromBlock = await getSafeFromBlock(identityRegistry.provider);
+  const filter = identityRegistry.filters.HospitalAffiliationConfirmed(null, hospitalAddress);
+  const logs = await identityRegistry.queryFilter(filter, fromBlock);
+  const uniqueDoctors = [...new Set(logs.map((log) => log.args.doctor))];
+
+  const confirmed = [];
+  for (const doctor of uniqueDoctors) {
+    const profile = await identityRegistry.profiles(doctor);
+    if (profile.hospital.toLowerCase() === hospitalAddress.toLowerCase()) {
+      confirmed.push({
+        doctor,
+        doctorName: profile.name,
+        doctorPhone: profile.phone,
+        doctorLicense: profile.idNumber,
+      });
+    }
+  }
+  return confirmed;
+}

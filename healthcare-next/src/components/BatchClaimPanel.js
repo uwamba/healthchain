@@ -6,16 +6,17 @@ import { FileStack, Loader2 } from "lucide-react";
 import { useWallet } from "@/context/WalletContext";
 import { useContractTx } from "@/hooks/useContractTx";
 import { ROLE } from "@/lib/identityRegistry";
+import { recordTypeLabel } from "@/lib/medicalRecordRegistry";
 import AddressInput from "@/components/AddressInput";
 import EmptyState from "@/components/EmptyState";
 
-// Dispensed prescriptions this pharmacy hasn't billed yet, grouped by
+// Records this provider (Pharmacy or Hospital) hasn't billed yet, grouped by
 // patient — since ClaimRegistry.submitClaim already accepts an array of
 // recordIds, one claim can bundle a whole month's worth of a patient's
-// dispensed prescriptions instead of filing per-dispense. There's no
-// on-chain scheduler to enforce "monthly" — this page is simply opened
-// whenever the pharmacist chooses to reconcile.
-export default function BatchClaimPanel({ records, patientNames, onSubmitted }) {
+// unbilled records instead of filing per-record. There's no on-chain
+// scheduler to enforce "monthly" — this page is simply opened whenever the
+// provider chooses to reconcile.
+export default function BatchClaimPanel({ records, patientNames, onSubmitted, emptyDescription }) {
   const { contracts } = useWallet();
   const { runTx } = useContractTx();
   const [selected, setSelected] = useState({});
@@ -71,7 +72,7 @@ export default function BatchClaimPanel({ records, patientNames, onSubmitted }) 
             descByPatient[patientAddress] || "",
             Number(amountByPatient[patientAddress]) || 0
           ),
-        { pendingLabel: "Filing batch claim…", successLabel: "Claim filed — waiting on patient approval" }
+        { pendingLabel: "Filing batch claim…", successLabel: "Claim filed" }
       );
       setSelected((prev) => {
         const next = { ...prev };
@@ -91,7 +92,10 @@ export default function BatchClaimPanel({ records, patientNames, onSubmitted }) 
       <EmptyState
         icon={FileStack}
         title="Nothing to claim"
-        description="Dispensed prescriptions that haven't been billed yet will appear here, grouped by patient, so you can batch several into one claim whenever you choose to reconcile (e.g. monthly)."
+        description={
+          emptyDescription ||
+          "Records that haven't been billed yet will appear here, grouped by patient, so you can batch several into one claim whenever you choose to reconcile (e.g. monthly)."
+        }
       />
     );
   }
@@ -118,7 +122,7 @@ export default function BatchClaimPanel({ records, patientNames, onSubmitted }) 
                     onChange={() => toggle(r.id)}
                     className="rounded border-gray-300"
                   />
-                  Prescription #{r.id} — dispensed {new Date(r.createdAt * 1000).toLocaleDateString()}
+                  {recordTypeLabel(r.recordType)} #{r.id} — issued {new Date(r.createdAt * 1000).toLocaleDateString()}
                 </label>
               ))}
             </div>
@@ -153,7 +157,7 @@ export default function BatchClaimPanel({ records, patientNames, onSubmitted }) 
                   className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand text-white px-3 py-1.5 text-xs font-medium hover:bg-brand-light transition-colors disabled:opacity-50"
                 >
                   {submittingPatient === patientAddress && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  File Claim for {selectedIds.length} Prescription{selectedIds.length > 1 ? "s" : ""}
+                  File Claim for {selectedIds.length} Record{selectedIds.length > 1 ? "s" : ""}
                 </button>
               </div>
             )}

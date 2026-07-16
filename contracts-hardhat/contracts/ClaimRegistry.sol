@@ -6,11 +6,17 @@ import "./MedicalRecordRegistry.sol";
 
 /// @title ClaimRegistry
 /// @notice Insurance claims, submitted by the provider that rendered a
-/// service (Hospital/Laboratory/Pharmacy), not the patient. A claim is
-/// invisible to the insurer until the patient explicitly approves it —
-/// that approval, not the initial submission, is the patient's actual
-/// consent action, matching how a real in-person visit works (the
-/// provider files the paperwork; the patient signs off before it goes out).
+/// service (Hospital/Laboratory/Pharmacy), not the patient. A Hospital or
+/// Laboratory claim is invisible to the insurer until the patient
+/// explicitly approves it — that approval, not the initial submission, is
+/// the patient's actual consent action, matching how a real in-person visit
+/// works (the provider files the paperwork; the patient signs off before it
+/// goes out). A Pharmacy claim skips this step and is visible immediately:
+/// by the time a pharmacy dispenses a prescription, the patient has already
+/// consented once already — either by presenting their own prescription QR
+/// in person, or by approving the pharmacy's AccessControlRegistry access
+/// request — so a second approval to simply let their own insurer see the
+/// claim would be a redundant gate, not an additional safeguard.
 /// @dev Composes with IdentityRegistry and MedicalRecordRegistry the same
 /// way every other contract in this system does — immutable references,
 /// no duplicated state.
@@ -67,6 +73,7 @@ contract ClaimRegistry {
         uint256 amount
     );
     event ClaimPatientApproved(uint256 indexed id, uint256 visibilityExpiresAt);
+    event ClaimAutoApproved(uint256 indexed id, uint256 visibilityExpiresAt);
     event ClaimPatientDenied(uint256 indexed id);
     event ClaimApproved(uint256 indexed id);
     event ClaimRejected(uint256 indexed id);
@@ -119,6 +126,13 @@ contract ClaimRegistry {
             recordClaimed[recordIds[i]] = true;
         }
 
+        // See the contract-level @notice: a Pharmacy claim skips straight to
+        // Pending with its visibility window already open — every other
+        // provider still needs the patient's explicit approval.
+        bool skipsApproval = providerRole == IdentityRegistry.Role.Pharmacy;
+        ClaimStatus initialStatus = skipsApproval ? ClaimStatus.Pending : ClaimStatus.AwaitingPatientApproval;
+        uint256 initialVisibilityExpiresAt = skipsApproval ? block.timestamp + VISIBILITY_PERIOD : 0;
+
         uint256 id = claims.length;
         claims.push(Claim({
             id: id,
@@ -128,15 +142,18 @@ contract ClaimRegistry {
             recordIds: recordIds,
             description: description,
             amount: amount,
-            status: ClaimStatus.AwaitingPatientApproval,
+            status: initialStatus,
             createdAt: block.timestamp,
-            visibilityExpiresAt: 0
+            visibilityExpiresAt: initialVisibilityExpiresAt
         }));
         claimsOfPatient[patient].push(id);
         claimsOfProvider[msg.sender].push(id);
         claimsOfInsurer[insurer].push(id);
 
         emit ClaimSubmitted(id, patient, msg.sender, insurer, amount);
+        if (skipsApproval) {
+            emit ClaimAutoApproved(id, initialVisibilityExpiresAt);
+        }
         return id;
     }
 

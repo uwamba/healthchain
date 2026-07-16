@@ -16,8 +16,11 @@ import AddressInput from "@/components/AddressInput";
 // phone's camera and approves there, which is the real signed transaction
 // (see VisitRegistry.sol / docs/ARCHITECTURE.md's QR note). Requested visits
 // awaiting approval and checked-in visits (with an "Assign Doctor" action)
-// are both listed below.
-export default function CheckInPanel({ requestedVisits, checkedInVisits, patientNames, onChanged }) {
+// are both listed below. Assignment is a dropdown of this hospital's own
+// confirmed-affiliated doctors (see loadConfirmedDoctorsForHospital) rather
+// than a free-text address — a hospital dispatches to its own staff, not an
+// arbitrary registered doctor.
+export default function CheckInPanel({ requestedVisits, checkedInVisits, patientNames, affiliatedDoctors, onChanged }) {
   const { contracts } = useWallet();
   const { runTx } = useContractTx();
 
@@ -80,28 +83,11 @@ export default function CheckInPanel({ requestedVisits, checkedInVisits, patient
     setAssignError(null);
     const doctorAddress = (doctorInputByVisit[visitId] || "").trim();
     if (!ethers.utils.isAddress(doctorAddress)) {
-      setAssignError("Enter a valid doctor wallet address.");
+      setAssignError("Select a doctor to assign.");
       return;
     }
 
     setAssigningVisit(visitId);
-    try {
-      const role = await contracts.identity.roleOf(doctorAddress);
-      if (role !== ROLE.Doctor) {
-        setAssignError("That address isn't registered as a doctor.");
-        setAssigningVisit(null);
-        return;
-      }
-    } catch (err) {
-      console.error("Doctor lookup failed:", err);
-      setAssignError(
-        err?.reason ||
-          "Lookup failed — check that your wallet is connected to the same network the contracts are deployed on."
-      );
-      setAssigningVisit(null);
-      return;
-    }
-
     try {
       await runTx(() => contracts.visit.assignDoctor(visitId, doctorAddress), {
         pendingLabel: "Assigning doctor…",
@@ -167,6 +153,11 @@ export default function CheckInPanel({ requestedVisits, checkedInVisits, patient
         <h3 className="font-medium mb-3">Checked-In — Assign a Doctor</h3>
         {checkedInVisits.length === 0 ? (
           <EmptyState title="No checked-in patients yet" description="Once a patient approves check-in, assign them to a doctor here." />
+        ) : affiliatedDoctors.length === 0 ? (
+          <EmptyState
+            title="No affiliated doctors yet"
+            description="A doctor must request affiliation (and you confirm it under Doctor Affiliations) before you can assign them to a checked-in patient."
+          />
         ) : (
           <div className="glass rounded-2xl divide-y divide-gray-100 p-1">
             {checkedInVisits.map((visit) => (
@@ -178,12 +169,18 @@ export default function CheckInPanel({ requestedVisits, checkedInVisits, patient
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <AddressInput
+                  <select
                     value={doctorInputByVisit[visit.id] || ""}
-                    onChange={(value) => setDoctorInputByVisit((prev) => ({ ...prev, [visit.id]: value }))}
-                    placeholder="Doctor wallet address (0x…)"
-                    className="py-1.5 text-xs"
-                  />
+                    onChange={(e) => setDoctorInputByVisit((prev) => ({ ...prev, [visit.id]: e.target.value }))}
+                    className="flex-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
+                  >
+                    <option value="">Select a doctor…</option>
+                    {affiliatedDoctors.map((d) => (
+                      <option key={d.doctor} value={d.doctor}>
+                        {d.doctorName || "Unnamed Doctor"}
+                      </option>
+                    ))}
+                  </select>
                   <button
                     onClick={() => assignDoctor(visit.id)}
                     disabled={assigningVisit === visit.id}

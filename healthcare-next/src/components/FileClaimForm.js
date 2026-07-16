@@ -14,7 +14,7 @@ import AddressInput from "@/components/AddressInput";
 // ClaimRegistry.sol). Submission here is the provider's paperwork, not the
 // patient's consent.
 export default function FileClaimForm({ patientAddress, recordId, onFiled }) {
-  const { contracts } = useWallet();
+  const { contracts, role } = useWallet();
   const { runTx } = useContractTx();
   const [insurerAddress, setInsurerAddress] = useState("");
   const [description, setDescription] = useState("");
@@ -54,7 +54,7 @@ export default function FileClaimForm({ patientAddress, recordId, onFiled }) {
     try {
       await runTx(
         () => contracts.claim.submitClaim(patientAddress, trimmed, [recordId], description, Number(amount) || 0),
-        { pendingLabel: "Filing claim…", successLabel: "Claim filed — waiting on patient approval" }
+        { pendingLabel: "Filing claim…", successLabel: "Claim filed" }
       );
       setFiled(true);
       onFiled?.();
@@ -66,7 +66,13 @@ export default function FileClaimForm({ patientAddress, recordId, onFiled }) {
   }
 
   if (filed) {
-    return <p className="text-xs text-medical-green">Claim filed — the patient must approve it before the insurer can see it.</p>;
+    return (
+      <p className="text-xs text-medical-green">
+        {role === ROLE.Pharmacy
+          ? "Claim filed — already visible to the insurer, no patient approval needed."
+          : "Claim filed — the patient must approve it before the insurer can see it."}
+      </p>
+    );
   }
 
   return (
