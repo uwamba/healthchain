@@ -1,4 +1,4 @@
-import { getSafeFromBlock } from "@/lib/blockRange";
+import { getSafeFromBlock, queryFilterChunked } from "@/lib/blockRange";
 
 export const MEDICAL_RECORD_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_MEDICAL_RECORD_REGISTRY_ADDRESS;
 
@@ -51,7 +51,7 @@ export async function loadPatientRecords(medicalRecordRegistry, patientAddress) 
 export async function loadDispensedByPharmacy(medicalRecordRegistry, pharmacyAddress) {
   const fromBlock = await getSafeFromBlock(medicalRecordRegistry.provider);
   const filter = medicalRecordRegistry.filters.PrescriptionDispensed(null, pharmacyAddress);
-  const logs = await medicalRecordRegistry.queryFilter(filter, fromBlock);
+  const logs = await queryFilterChunked(medicalRecordRegistry, filter, fromBlock);
 
   const records = await Promise.all(logs.map((log) => medicalRecordRegistry.records(log.args.recordId)));
   return records.map((r) => ({
@@ -73,7 +73,7 @@ export async function loadDispensedByPharmacy(medicalRecordRegistry, pharmacyAdd
 export async function loadRecordsByIssuer(medicalRecordRegistry, issuerAddress) {
   const fromBlock = await getSafeFromBlock(medicalRecordRegistry.provider);
   const filter = medicalRecordRegistry.filters.RecordCreated(null, null, issuerAddress);
-  const logs = await medicalRecordRegistry.queryFilter(filter, fromBlock);
+  const logs = await queryFilterChunked(medicalRecordRegistry, filter, fromBlock);
 
   const records = await Promise.all(logs.map((log) => medicalRecordRegistry.records(log.args.id)));
   return records.map((r) => ({

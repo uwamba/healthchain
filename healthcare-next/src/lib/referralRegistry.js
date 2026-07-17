@@ -1,4 +1,4 @@
-import { getSafeFromBlock } from "@/lib/blockRange";
+import { getSafeFromBlock, queryFilterChunked } from "@/lib/blockRange";
 
 export const REFERRAL_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_REFERRAL_REGISTRY_ADDRESS;
 
@@ -49,7 +49,7 @@ export async function loadReferralsForPatient(referralRegistry, patientAddress) 
 export async function loadReferralsForProvider(referralRegistry, providerAddress) {
   const fromBlock = await getSafeFromBlock(referralRegistry.provider);
   const filter = referralRegistry.filters.ReferralRequested(null, null, providerAddress);
-  const logs = await referralRegistry.queryFilter(filter, fromBlock);
+  const logs = await queryFilterChunked(referralRegistry, filter, fromBlock);
   const ids = logs.map((log) => log.args.id.toNumber());
   return loadReferrals(referralRegistry, ids);
 }
@@ -57,7 +57,7 @@ export async function loadReferralsForProvider(referralRegistry, providerAddress
 export async function loadReferralsForDoctor(referralRegistry, doctorAddress) {
   const fromBlock = await getSafeFromBlock(referralRegistry.provider);
   const filter = referralRegistry.filters.ReferralRequested(null, doctorAddress);
-  const logs = await referralRegistry.queryFilter(filter, fromBlock);
+  const logs = await queryFilterChunked(referralRegistry, filter, fromBlock);
   const ids = logs.map((log) => log.args.id.toNumber());
   return loadReferrals(referralRegistry, ids);
 }

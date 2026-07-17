@@ -18,9 +18,18 @@ const WalletContext = createContext(null);
 // runner for every contract read once connected to a network other than the
 // one the wallet's provider is actually on. Must match whichever network
 // NEXT_PUBLIC_*_ADDRESS actually points at (set NEXT_PUBLIC_READ_ONLY_RPC in
-// .env.local — defaults to Sepolia's public RPC, matching contracts-hardhat's
-// own default; point it at http://127.0.0.1:8545 instead for local Hardhat).
-const READ_ONLY_RPC = process.env.NEXT_PUBLIC_READ_ONLY_RPC || "https://ethereum-sepolia-rpc.publicnode.com";
+// .env.local — point it at http://127.0.0.1:8545 instead for local Hardhat).
+// NOT ethereum-sepolia-rpc.publicnode.com: confirmed by direct testing that
+// it now rejects any eth_getLogs call whose fromBlock is more than roughly
+// 100-500 blocks behind latest with "Archive requests require a personal
+// token" — which breaks every queryFilter()-based loader in this app for
+// anything not from the last few minutes. Tenderly's public gateway doesn't
+// impose that restriction. IMPORTANT: once a wallet is connected, contract
+// reads route through MetaMask's own configured Sepolia RPC, not this
+// fallback — if MetaMask itself points at the broken publicnode URL, this
+// default alone won't fix the connected experience; the network's RPC URL
+// in MetaMask needs updating too (Settings → Networks → Sepolia → Edit).
+const READ_ONLY_RPC = process.env.NEXT_PUBLIC_READ_ONLY_RPC || "https://sepolia.gateway.tenderly.co";
 
 export function WalletProvider({ children }) {
   const router = useRouter();

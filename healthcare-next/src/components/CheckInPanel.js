@@ -164,9 +164,15 @@ export default function CheckInPanel({ requestedVisits, checkedInVisits, patient
               {checkedInVisits.map((visit) => (
                 <div key={visit.id} className="p-3 space-y-2">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium">{patientNames[visit.patient] || "Patient"}</p>
+                    <div>
+                      <p className="text-sm font-medium">{patientNames[visit.patient] || "Patient"}</p>
+                      <p className="text-xs text-gray-400">
+                        Visit #{visit.id} — checked in{" "}
+                        {visit.checkedInAt ? new Date(visit.checkedInAt * 1000).toLocaleString() : "recently"}
+                      </p>
+                    </div>
                     {visit.assignedDoctor !== ethers.constants.AddressZero && (
-                      <span className="text-xs text-medical-green">Assigned</span>
+                      <span className="text-xs text-medical-green shrink-0">Assigned</span>
                     )}
                   </div>
                   {affiliatedDoctors.length > 0 && (

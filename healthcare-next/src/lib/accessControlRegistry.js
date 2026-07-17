@@ -1,4 +1,4 @@
-import { getSafeFromBlock } from "@/lib/blockRange";
+import { getSafeFromBlock, queryFilterChunked } from "@/lib/blockRange";
 
 export const ACCESS_CONTROL_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_ACCESS_CONTROL_REGISTRY_ADDRESS;
 
@@ -39,7 +39,7 @@ export function grantStatusLabel(status) {
 export async function loadPendingRequestsForPatient(accessControl, identityRegistry, patientAddress) {
   const fromBlock = await getSafeFromBlock(accessControl.provider);
   const filter = accessControl.filters.AccessRequested(patientAddress);
-  const logs = await accessControl.queryFilter(filter, fromBlock);
+  const logs = await queryFilterChunked(accessControl, filter, fromBlock);
   const uniqueProviders = [...new Set(logs.map((log) => log.args.doctor))];
 
   const pending = [];
@@ -59,7 +59,7 @@ export async function loadPendingRequestsForPatient(accessControl, identityRegis
 export async function loadApprovedGrantsForPatient(accessControl, identityRegistry, patientAddress) {
   const fromBlock = await getSafeFromBlock(accessControl.provider);
   const filter = accessControl.filters.AccessRequested(patientAddress);
-  const logs = await accessControl.queryFilter(filter, fromBlock);
+  const logs = await queryFilterChunked(accessControl, filter, fromBlock);
   const uniqueProviders = [...new Set(logs.map((log) => log.args.doctor))];
 
   const approved = [];
@@ -83,7 +83,7 @@ export async function loadApprovedGrantsForPatient(accessControl, identityRegist
 export async function loadApprovedPatientsForDoctor(accessControl, identityRegistry, doctorAddress) {
   const fromBlock = await getSafeFromBlock(accessControl.provider);
   const filter = accessControl.filters.AccessApproved(null, doctorAddress);
-  const logs = await accessControl.queryFilter(filter, fromBlock);
+  const logs = await queryFilterChunked(accessControl, filter, fromBlock);
   const uniquePatients = [...new Set(logs.map((log) => log.args.patient))];
 
   const approved = [];

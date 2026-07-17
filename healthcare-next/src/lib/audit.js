@@ -7,7 +7,7 @@
 // Hospital stats, Analytics charts, Patient "recent activity", and the
 // landing page's trust stats. See docs/SECURITY.md for the full reasoning.
 
-import { getSafeFromBlock } from "@/lib/blockRange";
+import { getSafeFromBlock, queryFilterChunked } from "@/lib/blockRange";
 
 // Every event across every contract, tagged with which contract/label
 // produced it and a friendly description template. Kept in one place so
@@ -53,7 +53,7 @@ export async function loadAuditTrail(contracts, { fromBlock } = {}) {
     if (!contract) continue;
 
     const filter = contract.filters[source.eventName]();
-    const logs = await contract.queryFilter(filter, resolvedFromBlock);
+    const logs = await queryFilterChunked(contract, filter, resolvedFromBlock);
 
     for (const log of logs) {
       events.push({

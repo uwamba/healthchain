@@ -1,4 +1,4 @@
-import { getSafeFromBlock } from "@/lib/blockRange";
+import { getSafeFromBlock, queryFilterChunked } from "@/lib/blockRange";
 
 export const IDENTITY_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_IDENTITY_REGISTRY_ADDRESS;
 
@@ -38,7 +38,7 @@ export function roleSlug(roleIndex) {
 export async function loadPendingAffiliationRequests(identityRegistry, hospitalAddress) {
   const fromBlock = await getSafeFromBlock(identityRegistry.provider);
   const filter = identityRegistry.filters.HospitalAffiliationRequested(null, hospitalAddress);
-  const logs = await identityRegistry.queryFilter(filter, fromBlock);
+  const logs = await queryFilterChunked(identityRegistry, filter, fromBlock);
   const uniqueDoctors = [...new Set(logs.map((log) => log.args.doctor))];
 
   const pending = [];
@@ -63,7 +63,7 @@ export async function loadPendingAffiliationRequests(identityRegistry, hospitalA
 export async function loadConfirmedDoctorsForHospital(identityRegistry, hospitalAddress) {
   const fromBlock = await getSafeFromBlock(identityRegistry.provider);
   const filter = identityRegistry.filters.HospitalAffiliationConfirmed(null, hospitalAddress);
-  const logs = await identityRegistry.queryFilter(filter, fromBlock);
+  const logs = await queryFilterChunked(identityRegistry, filter, fromBlock);
   const uniqueDoctors = [...new Set(logs.map((log) => log.args.doctor))];
 
   const confirmed = [];

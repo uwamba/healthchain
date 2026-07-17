@@ -1,4 +1,4 @@
-import { getSafeFromBlock } from "@/lib/blockRange";
+import { getSafeFromBlock, queryFilterChunked } from "@/lib/blockRange";
 
 export const VISIT_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_VISIT_REGISTRY_ADDRESS;
 
@@ -50,7 +50,7 @@ export async function loadVisitsForHospital(visitRegistry, hospitalAddress) {
   // filter arg silently filtered by patient === hospitalAddress instead,
   // which is never true, so this always returned zero results.
   const filter = visitRegistry.filters.VisitRequested(null, null, hospitalAddress);
-  const logs = await visitRegistry.queryFilter(filter, fromBlock);
+  const logs = await queryFilterChunked(visitRegistry, filter, fromBlock);
   const ids = logs.map((log) => log.args.id.toNumber());
   return loadVisits(visitRegistry, ids);
 }
@@ -59,7 +59,7 @@ export async function loadVisitsForHospital(visitRegistry, hospitalAddress) {
 export async function loadVisitsAssignedToDoctor(visitRegistry, doctorAddress) {
   const fromBlock = await getSafeFromBlock(visitRegistry.provider);
   const filter = visitRegistry.filters.VisitDoctorAssigned(null, doctorAddress);
-  const logs = await visitRegistry.queryFilter(filter, fromBlock);
+  const logs = await queryFilterChunked(visitRegistry, filter, fromBlock);
   const ids = [...new Set(logs.map((log) => log.args.id.toNumber()))];
   const all = await loadVisits(visitRegistry, ids);
   // Re-check current assignment — a visit can be reassigned to someone else later.

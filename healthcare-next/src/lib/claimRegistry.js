@@ -25,7 +25,7 @@ export const CLAIM_REGISTRY_ABI = [
   "event VisibilityRenewed(uint256 indexed id, uint256 visibilityExpiresAt)",
 ];
 
-import { getSafeFromBlock } from "@/lib/blockRange";
+import { getSafeFromBlock, queryFilterChunked } from "@/lib/blockRange";
 
 // Mirror ClaimRegistry.sol's enum — index === on-chain uint8 value.
 export const CLAIM_STATUS = ["AwaitingPatientApproval", "Pending", "Approved", "Rejected", "PatientDenied"];
@@ -96,7 +96,7 @@ export async function loadVisibilityRenewalRequestsForPatient(claimRegistry, pat
 
   const fromBlock = await getSafeFromBlock(claimRegistry.provider);
   const filter = claimRegistry.filters.VisibilityRenewalRequested();
-  const logs = await claimRegistry.queryFilter(filter, fromBlock);
+  const logs = await queryFilterChunked(claimRegistry, filter, fromBlock);
   const requestedIds = new Set(logs.map((log) => log.args.id.toNumber()));
 
   return stillExpired.filter((c) => requestedIds.has(c.id));
