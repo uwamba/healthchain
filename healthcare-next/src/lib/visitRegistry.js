@@ -45,7 +45,11 @@ export async function loadVisitsForPatient(visitRegistry, patientAddress) {
 // throughout this app (see lib/identityRegistry.js's affiliation-request loader).
 export async function loadVisitsForHospital(visitRegistry, hospitalAddress) {
   const fromBlock = await getSafeFromBlock(visitRegistry.provider);
-  const filter = visitRegistry.filters.VisitRequested(null, hospitalAddress);
+  // VisitRequested(id, patient, hospital) — hospital is the *third* indexed
+  // arg, not the second. Passing hospitalAddress as the second positional
+  // filter arg silently filtered by patient === hospitalAddress instead,
+  // which is never true, so this always returned zero results.
+  const filter = visitRegistry.filters.VisitRequested(null, null, hospitalAddress);
   const logs = await visitRegistry.queryFilter(filter, fromBlock);
   const ids = logs.map((log) => log.args.id.toNumber());
   return loadVisits(visitRegistry, ids);
