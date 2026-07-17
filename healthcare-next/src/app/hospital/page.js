@@ -84,12 +84,27 @@ function HospitalDashboard() {
   const [unclaimedRecords, setUnclaimedRecords] = useState(null);
   const [issuedPatientNames, setIssuedPatientNames] = useState({});
 
+  // Each data source is isolated so a single failure (a transient RPC hiccup
+  // is common on the public Sepolia endpoint this app uses) can't blank out
+  // the rest of the dashboard — same reasoning as NotificationContext's
+  // per-source safe() wrapper. Falls back to an empty/neutral value and logs
+  // the real error, rather than leaving state stuck on null forever with no
+  // visible sign anything went wrong.
+  async function safe(label, promise, fallback) {
+    try {
+      return await promise;
+    } catch (error) {
+      console.error(`Hospital dashboard: failed to load ${label}:`, error);
+      return fallback;
+    }
+  }
+
   const load = useCallback(async () => {
     const [profile, events, pending, confirmed] = await Promise.all([
-      contracts.identity.profiles(account),
-      loadAuditTrail(contracts),
-      loadPendingAffiliationRequests(contracts.identity, account),
-      loadConfirmedDoctorsForHospital(contracts.identity, account),
+      safe("hospital profile", contracts.identity.profiles(account), null),
+      safe("activity trail", loadAuditTrail(contracts), []),
+      safe("pending affiliation requests", loadPendingAffiliationRequests(contracts.identity, account), []),
+      safe("confirmed affiliated doctors", loadConfirmedDoctorsForHospital(contracts.identity, account), []),
     ]);
 
     setHospitalProfile(profile);
@@ -114,24 +129,34 @@ function HospitalDashboard() {
   }, [contracts, account]);
 
   const loadVisits = useCallback(async () => {
-    const all = await loadVisitsForHospital(contracts.visit, account);
+    const all = await safe("hospital visits", loadVisitsForHospital(contracts.visit, account), []);
     setVisits(all);
 
     const uniquePatients = [...new Set(all.map((v) => v.patient))];
-    const profiles = await Promise.all(uniquePatients.map((addr) => contracts.identity.profiles(addr)));
-    setVisitPatientNames(Object.fromEntries(uniquePatients.map((addr, i) => [addr, profiles[i].name])));
+    const profiles = await Promise.all(
+      uniquePatients.map((addr) => safe(`profile ${addr}`, contracts.identity.profiles(addr), null))
+    );
+    setVisitPatientNames(
+      Object.fromEntries(uniquePatients.map((addr, i) => [addr, profiles[i]?.name]).filter(([, name]) => name))
+    );
   }, [contracts, account]);
 
   const loadIssuedRecords = useCallback(async () => {
-    const records = await loadRecordsByIssuer(contracts.records, account);
+    const records = await safe("issued records", loadRecordsByIssuer(contracts.records, account), []);
 
-    const claimedFlags = await Promise.all(records.map((r) => contracts.claim.recordClaimed(r.id)));
+    const claimedFlags = await Promise.all(
+      records.map((r) => safe(`claimed flag ${r.id}`, contracts.claim.recordClaimed(r.id), false))
+    );
     const unclaimed = records.filter((_, i) => !claimedFlags[i]);
     setUnclaimedRecords(unclaimed);
 
     const uniquePatients = [...new Set(unclaimed.map((r) => r.patient))];
-    const profiles = await Promise.all(uniquePatients.map((addr) => contracts.identity.profiles(addr)));
-    setIssuedPatientNames(Object.fromEntries(uniquePatients.map((addr, i) => [addr, profiles[i].name])));
+    const profiles = await Promise.all(
+      uniquePatients.map((addr) => safe(`profile ${addr}`, contracts.identity.profiles(addr), null))
+    );
+    setIssuedPatientNames(
+      Object.fromEntries(uniquePatients.map((addr, i) => [addr, profiles[i]?.name]).filter(([, name]) => name))
+    );
   }, [contracts, account]);
 
   useEffect(() => {

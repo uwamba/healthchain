@@ -153,45 +153,49 @@ export default function CheckInPanel({ requestedVisits, checkedInVisits, patient
         <h3 className="font-medium mb-3">Checked-In — Assign a Doctor</h3>
         {checkedInVisits.length === 0 ? (
           <EmptyState title="No checked-in patients yet" description="Once a patient approves check-in, assign them to a doctor here." />
-        ) : affiliatedDoctors.length === 0 ? (
-          <EmptyState
-            title="No affiliated doctors yet"
-            description="A doctor must request affiliation (and you confirm it under Doctor Affiliations) before you can assign them to a checked-in patient."
-          />
         ) : (
-          <div className="glass rounded-2xl divide-y divide-gray-100 p-1">
-            {checkedInVisits.map((visit) => (
-              <div key={visit.id} className="p-3 space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium">{patientNames[visit.patient] || "Patient"}</p>
-                  {visit.assignedDoctor !== ethers.constants.AddressZero && (
-                    <span className="text-xs text-medical-green">Assigned</span>
+          <div className="space-y-3">
+            {affiliatedDoctors.length === 0 && (
+              <p className="text-xs text-amber-600">
+                No affiliated doctors yet — confirm one under Doctor Affiliations before you can assign them here.
+              </p>
+            )}
+            <div className="glass rounded-2xl divide-y divide-gray-100 p-1">
+              {checkedInVisits.map((visit) => (
+                <div key={visit.id} className="p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium">{patientNames[visit.patient] || "Patient"}</p>
+                    {visit.assignedDoctor !== ethers.constants.AddressZero && (
+                      <span className="text-xs text-medical-green">Assigned</span>
+                    )}
+                  </div>
+                  {affiliatedDoctors.length > 0 && (
+                    <div className="flex gap-2">
+                      <select
+                        value={doctorInputByVisit[visit.id] || ""}
+                        onChange={(e) => setDoctorInputByVisit((prev) => ({ ...prev, [visit.id]: e.target.value }))}
+                        className="flex-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
+                      >
+                        <option value="">Select a doctor…</option>
+                        {affiliatedDoctors.map((d) => (
+                          <option key={d.doctor} value={d.doctor}>
+                            {d.doctorName || "Unnamed Doctor"}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => assignDoctor(visit.id)}
+                        disabled={assigningVisit === visit.id}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-brand text-white px-3 py-1.5 text-xs font-medium hover:bg-brand-light disabled:opacity-50 shrink-0"
+                      >
+                        {assigningVisit === visit.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        Assign
+                      </button>
+                    </div>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  <select
-                    value={doctorInputByVisit[visit.id] || ""}
-                    onChange={(e) => setDoctorInputByVisit((prev) => ({ ...prev, [visit.id]: e.target.value }))}
-                    className="flex-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
-                  >
-                    <option value="">Select a doctor…</option>
-                    {affiliatedDoctors.map((d) => (
-                      <option key={d.doctor} value={d.doctor}>
-                        {d.doctorName || "Unnamed Doctor"}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => assignDoctor(visit.id)}
-                    disabled={assigningVisit === visit.id}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-brand text-white px-3 py-1.5 text-xs font-medium hover:bg-brand-light disabled:opacity-50 shrink-0"
-                  >
-                    {assigningVisit === visit.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    Assign
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
         {assignError && <p className="text-sm text-red-500 mt-2">{assignError}</p>}
